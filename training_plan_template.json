@@ -1,0 +1,143 @@
+{
+  "plan_name": "Sub-3 Marathon Training Plan",
+  "goal_race": {
+    "date": "2026-04-04",
+    "race_type": "marathon",
+    "distance_km": 42.195,
+    "goal_time": "2:59:59",
+    "goal_pace_min_per_km": "4:15",
+    "race_name": "Target Marathon"
+  },
+  "created_date": "2026-01-23",
+  "plan_start_date": "2026-01-27",
+  "plan_end_date": "2026-04-04",
+  "notes": "16-week marathon build focusing on threshold work and weekly long runs",
+  "weeks": [
+    {
+      "week_number": 1,
+      "week_start_date": "2026-01-27",
+      "total_planned_distance_km": 65,
+      "weekly_focus": "Base building",
+      "runs": [
+        {
+          "day_of_week": "Monday",
+          "date": "2026-01-27",
+          "type": "easy",
+          "distance_km": 10,
+          "target_pace_min_per_km": "5:30",
+          "description": "Easy recovery run"
+        },
+        {
+          "day_of_week": "Tuesday",
+          "date": "2026-01-28",
+          "type": "workout",
+          "distance_km": 12,
+          "target_pace_min_per_km": "4:15",
+          "structure": "2km warmup, 5x1600m @ 4:00/km with 400m recovery, 2km cooldown",
+          "description": "Threshold intervals"
+        },
+        {
+          "day_of_week": "Wednesday",
+          "date": "2026-01-29",
+          "type": "easy",
+          "distance_km": 8,
+          "target_pace_min_per_km": "5:45",
+          "description": "Easy run"
+        },
+        {
+          "day_of_week": "Thursday",
+          "date": "2026-01-30",
+          "type": "gym",
+          "duration_minutes": 60,
+          "description": "Strength training - lower body focus, core work"
+        },
+        {
+          "day_of_week": "Friday",
+          "date": "2026-01-31",
+          "type": "easy",
+          "distance_km": 10,
+          "target_pace_min_per_km": "5:30",
+          "description": "Easy run"
+        },
+        {
+          "day_of_week": "Saturday",
+          "date": "2026-02-01",
+          "type": "long_run",
+          "distance_km": 20,
+          "target_pace_min_per_km": "5:00",
+          "description": "Long run at steady pace"
+        },
+        {
+          "day_of_week": "Sunday",
+          "date": "2026-02-02",
+          "type": "cross_training",
+          "duration_minutes": 45,
+          "description": "Cycling or swimming - active recovery"
+        }
+      ]
+    },
+    {
+      "week_number": 2,
+      "week_start_date": "2026-02-03",
+      "total_planned_distance_km": 70,
+      "weekly_focus": "Building endurance",
+      "runs": [
+        {
+          "day_of_week": "Monday",
+          "date": "2026-02-03",
+          "type": "rest",
+          "description": "Complete rest day"
+        },
+        {
+          "day_of_week": "Tuesday",
+          "date": "2026-02-04",
+          "type": "workout",
+          "distance_km": 13,
+          "target_pace_min_per_km": "4:10",
+          "structure": "2km warmup, 3x3km @ 4:05/km with 800m recovery, 2km cooldown",
+          "description": "Tempo run"
+        },
+        {
+          "day_of_week": "Wednesday",
+          "date": "2026-02-05",
+          "type": "easy",
+          "distance_km": 10,
+          "target_pace_min_per_km": "5:30",
+          "description": "Easy run"
+        },
+        {
+          "day_of_week": "Thursday",
+          "date": "2026-02-06",
+          "type": "easy",
+          "distance_km": 12,
+          "target_pace_min_per_km": "5:30",
+          "description": "Easy run with strides"
+        },
+        {
+          "day_of_week": "Friday",
+          "date": "2026-02-07",
+          "type": "gym",
+          "duration_minutes": 60,
+          "description": "Strength training - full body"
+        },
+        {
+          "day_of_week": "Saturday",
+          "date": "2026-02-08",
+          "type": "long_run",
+          "distance_km": 22,
+          "target_pace_min_per_km": "5:00",
+          "structure": "First 15km easy, last 7km at marathon pace",
+          "description": "Progressive long run"
+        },
+        {
+          "day_of_week": "Sunday",
+          "date": "2026-02-09",
+          "type": "easy",
+          "distance_km": 8,
+          "target_pace_min_per_km": "6:00",
+          "description": "Recovery run"
+        }
+      ]
+    }
+  ]
+}

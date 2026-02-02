@@ -1,0 +1,65 @@
+[project]
+name = "strava-running-coach-mcp"
+version = "0.1.0"
+description = "AI Running Coach powered by Claude + Strava - MCP server for personalized training plans and coaching"
+readme = "README.md"
+authors = [
+    { name = "Peter Skomoroch" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.24.0",
+    "python-dotenv>=1.0.0",
+    "fastmcp>=0.1.0",
+    "rich>=13.0.0",
+    "requests>=2.32.5",
+    "matplotlib>=3.7.0",
+    "pydantic>=2.0.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+strava-running-coach = "strava_running_coach:main"
+strava-analyze-plan = "strava_running_coach.cli.analyze_plan:main"
+strava-generate-report = "strava_running_coach.cli.generate_report:main"
+strava-generate-calendar = "strava_running_coach.cli.generate_calendar:main"
+strava-update-data = "strava_running_coach.cli.update_data:main"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/peteskomoroch/strava-running-coach-mcp"
+"Bug Tracker" = "https://github.com/peteskomoroch/strava-running-coach-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/strava_running_coach"]
+
+[tool.hatch.build]
+only-packages = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+select = ["E", "F", "I", "B", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true

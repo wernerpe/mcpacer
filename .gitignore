@@ -1,0 +1,62 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# UV / Virtual environments
+.venv/
+venv/
+env/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+.eggs/
+wheels/
+*.whl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Claude/MCP local config
+.claude/
+
+# Project data (user-specific)
+run_data/
+training_plans/
+coaching_data/session_notes*.json
+coaching_data/athlete_profile*.json
+coaching_data/plan_adjustments*.json
+
+# Generated files
+training_calendar.html
+
+# OS
+.DS_Store
+Thumbs.db
