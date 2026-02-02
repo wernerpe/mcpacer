@@ -2,9 +2,11 @@
 
 An AI-powered running coach that connects Claude to your Strava data. Get personalized training plans, track your progress, and receive coaching feedback with customizable coach personas.
 
+The strava MCP server was based off of https://github.com/tomekkorbak/strava-mcp-server.
+
 ## Features
 
-- **Personalized Coaching**: Customizable coach personas (David Goggins-style tough love or a grumpy Swiss coach)
+- **Personalized Coaching**: Customizable coach personas
 - **Training Plans**: Create, save, and track structured training plans in JSON format
 - **Progress Tracking**: Automatically sync and analyze your Strava running data
 - **Plan Adherence**: Compare planned vs actual workouts with completion rates
@@ -125,8 +127,6 @@ Ask Claude to load the coaching context:
 ## Customizing Your Coach
 
 Edit `coaching_data/coaching_persona.md` to customize your coach's personality. Two examples are provided:
-- `coaching_persona.md` - David Goggins-style tough love
-- `coaching_persona_roland.md` - Grumpy Swiss coach with local expressions
 
 ## Project Structure
 

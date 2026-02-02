@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI Running Coach powered by Claude + Strava - MCP server for personalized training plans and coaching"
 readme = "README.md"
 authors = [
-    { name = "Peter Skomoroch" }
+    { name = "Peter Werner" }
 ]
 requires-python = ">=3.12"
 dependencies = [
