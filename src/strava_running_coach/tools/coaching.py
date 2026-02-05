@@ -14,7 +14,9 @@ def register_coaching_tools(mcp):
     plan_storage = TrainingPlanStorage()
 
     @mcp.tool()
-    def get_coaching_context(athlete_id: str = "default") -> dict[str, Any]:
+    def get_coaching_context(
+        coach_name: str = "david", athlete_id: str = "default"
+    ) -> dict[str, Any]:
         """
         Get the coaching context for starting a coaching conversation.
 
@@ -27,6 +29,7 @@ def register_coaching_tools(mcp):
         Claude should adopt the persona defined in the coaching_persona.md file.
 
         Args:
+            coach_name: Name of the coach persona to use (e.g., "david", "roland")
             athlete_id: Athlete identifier (default for single-user mode)
 
         Returns:
@@ -35,7 +38,7 @@ def register_coaching_tools(mcp):
         """
         try:
             # Load coaching persona
-            persona = coaching_storage.get_persona()
+            persona = coaching_storage.get_persona(coach_name)
 
             # Load athlete profile
             profile = coaching_storage.get_athlete_profile(athlete_id)

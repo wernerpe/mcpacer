@@ -69,6 +69,20 @@ class StravaClient:
 
         return response.json()
 
+    def _make_put_request(self, endpoint: str, data: dict[str, Any]) -> Any:
+        """Make an authenticated PUT request to the Strava API."""
+        self._ensure_valid_token()
+
+        url = f"{self.BASE_URL}/{endpoint}"
+        headers = {"Authorization": f"Bearer {self.access_token}"}
+
+        response = self.client.put(url, headers=headers, data=data)
+        if response.status_code != 200:
+            error_msg = f"Error {response.status_code}: {response.text}"
+            raise Exception(error_msg)
+
+        return response.json()
+
     def get_activities(
         self, limit: int = 10, before: Optional[int] = None, after: Optional[int] = None
     ) -> list[dict[str, Any]]:
@@ -106,6 +120,43 @@ class StravaClient:
         """
         activity = self._make_request(f"activities/{activity_id}")
         return self._filter_activity(activity)
+
+    def get_activity_raw(self, activity_id: int) -> dict[str, Any]:
+        """
+        Get full activity data including description field.
+
+        Args:
+            activity_id: ID of the activity to retrieve
+
+        Returns:
+            Full activity details including description
+        """
+        return self._make_request(f"activities/{activity_id}")
+
+    def update_activity(
+        self,
+        activity_id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Update an activity's mutable properties.
+
+        Args:
+            activity_id: ID of the activity to update
+            name: Optional new name for the activity
+            description: Optional new description for the activity
+
+        Returns:
+            Updated activity details
+        """
+        data: dict[str, Any] = {}
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+
+        return self._make_put_request(f"activities/{activity_id}", data)
 
     def get_activity_streams(self, activity_id: int, keys: list[str]) -> list[dict[str, Any]]:
         """

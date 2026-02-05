@@ -11,32 +11,99 @@ class CoachingStorage(BaseStorage):
     """Storage for coaching data including persona, athlete profile, and session notes."""
 
     MAX_SESSION_NOTES = 50  # Keep the last N session notes
+    DEFAULT_COACH = "david"
 
     def __init__(self) -> None:
         """Initialize coaching storage in the coaching_data directory."""
         super().__init__("coaching_data")
 
-    def get_persona_path(self) -> Path:
-        """Get the path to the coaching persona file."""
-        return self.data_dir / "coaching_persona.md"
+    def get_guidelines_path(self) -> Path:
+        """Get the path to the shared coaching guidelines file."""
+        return self.data_dir / "coaching_guidelines.md"
 
-    def get_persona(self) -> str | None:
+    def get_guidelines(self) -> str | None:
         """
-        Get the coaching persona markdown content.
+        Get the shared coaching guidelines markdown content.
 
         Returns:
-            The persona markdown content or None if not found
+            The guidelines markdown content or None if not found
         """
-        return self._load_text(self.get_persona_path())
+        return self._load_text(self.get_guidelines_path())
 
-    def save_persona(self, content: str) -> None:
+    def get_persona_path(self, coach_name: str | None = None) -> Path:
         """
-        Save the coaching persona markdown content.
+        Get the path to a coach's persona file.
+
+        Args:
+            coach_name: Name of the coach (e.g., "david", "roland").
+                       If None, uses the default coach.
+
+        Returns:
+            Path to the persona file in coaching_data/personas/
+        """
+        if coach_name is None:
+            coach_name = self.DEFAULT_COACH
+        return self.data_dir / "personas" / f"{coach_name}.md"
+
+    def get_persona(self, coach_name: str | None = None) -> str | None:
+        """
+        Get the combined coaching persona and guidelines content.
+
+        Loads the coach-specific persona and combines it with the shared
+        coaching guidelines.
+
+        Args:
+            coach_name: Name of the coach (e.g., "david", "roland").
+                       If None, uses the default coach.
+
+        Returns:
+            The combined persona + guidelines markdown content, or None if not found
+        """
+        if coach_name is None:
+            coach_name = self.DEFAULT_COACH
+
+        persona_content = self._load_text(self.get_persona_path(coach_name))
+        guidelines_content = self.get_guidelines()
+
+        if persona_content is None:
+            return None
+
+        # Combine persona and guidelines
+        combined = f"{persona_content}\n\n# Coaching Guidelines\n\n"
+        if guidelines_content:
+            # Strip the "# Coaching Guidelines" header from guidelines since we add it
+            lines = guidelines_content.split("\n")
+            if lines and lines[0].strip() == "# Coaching Guidelines":
+                guidelines_content = "\n".join(lines[1:]).lstrip()
+            combined += guidelines_content
+
+        return combined
+
+    def list_personas(self) -> list[str]:
+        """
+        List available coach personas.
+
+        Returns:
+            List of coach names (without .md extension)
+        """
+        personas_dir = self.data_dir / "personas"
+        if not personas_dir.exists():
+            return []
+        return [p.stem for p in personas_dir.glob("*.md")]
+
+    def save_persona(self, content: str, coach_name: str | None = None) -> None:
+        """
+        Save a coaching persona markdown content.
 
         Args:
             content: The markdown content defining the coaching persona
+            coach_name: Name of the coach. If None, uses the default coach.
         """
-        self._save_text(self.get_persona_path(), content)
+        if coach_name is None:
+            coach_name = self.DEFAULT_COACH
+        persona_path = self.get_persona_path(coach_name)
+        persona_path.parent.mkdir(parents=True, exist_ok=True)
+        self._save_text(persona_path, content)
 
     def get_athlete_profile(self, athlete_id: str = "default") -> dict[str, Any] | None:
         """

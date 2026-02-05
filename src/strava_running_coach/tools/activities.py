@@ -141,3 +141,88 @@ def register_activity_tools(mcp, strava_client):
             return {"data": streams}
         except Exception as e:
             return {"error": str(e)}
+
+    @mcp.tool()
+    def get_activity_description(activity_id: int) -> dict[str, Any]:
+        """
+        Get an activity's description to check for existing coaching feedback.
+
+        Args:
+            activity_id: ID of the activity
+
+        Returns:
+            Dictionary with activity id, name, and description
+        """
+        if strava_client is None:
+            return {"error": "Strava client not initialized."}
+
+        try:
+            activity = strava_client.get_activity_raw(activity_id)
+            return {
+                "id": activity.get("id"),
+                "name": activity.get("name"),
+                "description": activity.get("description"),
+                "has_coaching_feedback": "-------\n(" in (activity.get("description") or ""),
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    @mcp.tool()
+    def add_coaching_feedback(
+        activity_id: int, feedback: str, coach_name: str = "Coach David"
+    ) -> dict[str, Any]:
+        """
+        Add coaching feedback to a Strava activity description.
+
+        Appends feedback from the coach to the activity's description,
+        preserving any existing description text.
+
+        Args:
+            activity_id: ID of the activity to add feedback to
+            feedback: The coaching feedback text to append
+            coach_name: Name of the coach to display (default: "Coach David")
+
+        Returns:
+            Dictionary with success status or error message
+        """
+        if strava_client is None:
+            return {
+                "error": "Strava client not initialized. Please provide refresh token, client ID, and client secret."
+            }
+
+        if not feedback or not feedback.strip():
+            return {"error": "Feedback cannot be empty"}
+
+        try:
+            # Get current activity to preserve existing description
+            activity = strava_client.get_activity_raw(activity_id)
+            existing_description = activity.get("description") or ""
+
+            # Format the coaching feedback
+            coaching_comment = f"\n\n-------\n({coach_name} 🤖) {feedback.strip()}"
+
+            # Append to existing description
+            new_description = existing_description + coaching_comment
+
+            # Update the activity
+            updated = strava_client.update_activity(
+                activity_id, description=new_description
+            )
+
+            return {
+                "success": True,
+                "activity_id": activity_id,
+                "activity_name": updated.get("name"),
+                "message": "Coaching feedback added successfully",
+            }
+        except Exception as e:
+            error_msg = str(e)
+            # Provide helpful error messages for common cases
+            if "403" in error_msg:
+                return {
+                    "error": "Permission denied. The Strava API requires 'activity:write' scope. "
+                    "Please re-authorize with Strava including the activity:write scope in your OAuth flow."
+                }
+            if "404" in error_msg:
+                return {"error": f"Activity {activity_id} not found"}
+            return {"error": error_msg}

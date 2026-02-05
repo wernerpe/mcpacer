@@ -25,7 +25,7 @@ def print_auth_url(client_id: str) -> None:
         f"?client_id={client_id}"
         f"&redirect_uri=http://localhost"
         f"&response_type=code"
-        f"&scope=read,activity:read,activity:read_all,profile:read_all"
+        f"&scope=read,activity:read,activity:read_all,activity:write,profile:read_all"
     )
 
     print("\n=== Step 1: Visit the following URL in your browser ===")
