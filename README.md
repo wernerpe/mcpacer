@@ -50,9 +50,15 @@ STRAVA_REFRESH_TOKEN=your_refresh_token
 
 ## Usage
 
-### Claude Desktop / Claude Code Configuration
+### 1. Register the MCP Server
 
-Add to your MCP settings:
+Add the Strava MCP server to your Claude configuration file:
+
+**For Claude Desktop:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+
+**For Claude Code:** Edit `~/.claude/mcp_config.json`
+
+Add the following configuration:
 
 ```json
 {
@@ -61,7 +67,7 @@ Add to your MCP settings:
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/strava-running-coach-mcp",
+        "/absolute/path/to/strava-running-coach-mcp",
         "run",
         "strava-running-coach"
       ],
@@ -74,6 +80,31 @@ Add to your MCP settings:
   }
 }
 ```
+
+**Important:** Replace `/absolute/path/to/strava-running-coach-mcp` with the full path to your cloned repository.
+
+After adding the configuration, restart Claude Desktop or Claude Code to load the MCP server.
+
+### 2. Install the Running Coach Skill (Optional)
+
+The `/running-coach` skill automates your coaching check-in workflow. To install it:
+
+```bash
+# Create the skills directory if it doesn't exist
+mkdir -p ~/.claude/skills
+
+# Copy the skill to your personal skills directory
+cp -r skills/running-coach ~/.claude/skills/
+```
+
+Once installed, you can use `/running-coach` in any Claude conversation to:
+1. Select your coaching persona
+2. Load coaching context and athlete profile
+3. Fetch fresh training data from Strava
+4. Analyze plan adherence
+5. Post personalized feedback on all recent runs
+
+The skill is immediately available - no restart required!
 
 ### CLI Commands
 
@@ -101,9 +132,11 @@ uv run strava-generate-calendar [plan_id]
 | `list_training_plans` | List all saved training plans |
 | `get_training_plan` | Retrieve a specific plan |
 | `analyze_plan_adherence` | Compare planned vs actual workouts |
+| `get_coaching_personas` | List available coaching personas |
 | `get_coaching_context` | Load coach persona and athlete profile |
 | `save_coaching_note` | Persist coaching insights |
 | `update_athlete_profile` | Update athlete preferences and goals |
+| `add_coaching_feedback` | Post coaching feedback to Strava activity descriptions |
 
 ## Coaching Workflows
 
@@ -126,7 +159,7 @@ Ask Claude to load the coaching context:
 
 ## Customizing Your Coach
 
-Edit `coaching_data/coaching_persona.md` to customize your coach's personality. Two examples are provided:
+Coach personas are stored in `coaching_data/personas/`. You can customize existing personas or create new ones by adding `.md` files to this directory.
 
 ## Project Structure
 

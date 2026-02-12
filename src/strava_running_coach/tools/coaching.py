@@ -14,6 +14,20 @@ def register_coaching_tools(mcp):
     plan_storage = TrainingPlanStorage()
 
     @mcp.tool()
+    def get_coaching_personas() -> dict[str, Any]:
+        """
+        Get the list of available coaching personas.
+
+        Returns:
+            Dictionary containing a list of available coach names
+        """
+        try:
+            personas = coaching_storage.list_personas()
+            return {"data": {"personas": personas}}
+        except Exception as e:
+            return {"error": str(e)}
+
+    @mcp.tool()
     def get_coaching_context(
         coach_name: str = "david", athlete_id: str = "default"
     ) -> dict[str, Any]:
