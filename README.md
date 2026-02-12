@@ -97,14 +97,7 @@ mkdir -p ~/.claude/skills
 cp -r skills/running-coach ~/.claude/skills/
 ```
 
-Once installed, you can use `/running-coach` in any Claude conversation to:
-1. Select your coaching persona
-2. Load coaching context and athlete profile
-3. Fetch fresh training data from Strava
-4. Analyze plan adherence
-5. Post personalized feedback on all recent runs
-
-The skill is immediately available - no restart required!
+**Usage:** Open Claude Code and run `/running-coach`
 
 ### CLI Commands
 
