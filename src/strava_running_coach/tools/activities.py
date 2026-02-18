@@ -169,7 +169,7 @@ def register_activity_tools(mcp, strava_client):
 
     @mcp.tool()
     def add_coaching_feedback(
-        activity_id: int, feedback: str, coach_name: str = "Coach David"
+        activity_id: int, feedback: str, coach_name: str = "Coach"
     ) -> dict[str, Any]:
         """
         Add coaching feedback to a Strava activity description.
@@ -180,7 +180,7 @@ def register_activity_tools(mcp, strava_client):
         Args:
             activity_id: ID of the activity to add feedback to
             feedback: The coaching feedback text to append
-            coach_name: Name of the coach to display (default: "Coach David")
+            coach_name: Name of the coach to display (default: "Coach")
 
         Returns:
             Dictionary with success status or error message

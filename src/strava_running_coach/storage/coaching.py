@@ -11,7 +11,7 @@ class CoachingStorage(BaseStorage):
     """Storage for coaching data including persona, athlete profile, and session notes."""
 
     MAX_SESSION_NOTES = 50  # Keep the last N session notes
-    DEFAULT_COACH = "david"
+    DEFAULT_COACH = "coach"
 
     def __init__(self) -> None:
         """Initialize coaching storage in the coaching_data directory."""

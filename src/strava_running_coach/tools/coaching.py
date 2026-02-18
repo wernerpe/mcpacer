@@ -29,7 +29,7 @@ def register_coaching_tools(mcp):
 
     @mcp.tool()
     def get_coaching_context(
-        coach_name: str = "david", athlete_id: str = "default"
+        coach_name: str = "coach", athlete_id: str = "default"
     ) -> dict[str, Any]:
         """
         Get the coaching context for starting a coaching conversation.

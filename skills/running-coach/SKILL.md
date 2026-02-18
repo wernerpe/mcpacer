@@ -10,6 +10,7 @@ You are performing a running coach check-in. Follow these steps in order:
 ## 1. Select Coaching Persona
 - First, call `mcp__strava__get_coaching_personas` to get the list of available coaching personas
 - Use `AskUserQuestion` to ask the user which coaching persona to use for this check-in
+- Present `coach` as the default/recommended option — it is the factual, data-driven coach built for consistency and goal tracking
 
 ## 2. Load Coaching Context
 Call `mcp__strava__get_coaching_context` with the selected `coach_name` parameter to load:
