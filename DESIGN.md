@@ -24,7 +24,8 @@ Build the standalone experience on top of the fixed backend.
 1. **TUI** — streaming terminal chat using Rich + prompt_toolkit; MCP client connects to existing server via stdio
 2. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
 3. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
-4. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, prep for public release
+4. **Plan export** — `strava-coach export-plan` (markdown table) and `strava-coach export-calendar` (ICS)
+5. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, prep for public release
 
 ---
 
@@ -313,6 +314,45 @@ weeks:
 **Migration:** one-time script converts existing `plan_*.json` → `plan_*.yaml`.
 
 Use **ruamel.yaml** (not PyYAML) so that round-trip edits preserve comments and formatting.
+
+---
+
+## Training Plan Export
+
+### Markdown Table (Phase 1 — implement first)
+
+`strava-coach export-plan [plan_id]` generates a `.md` file with a week × day table. Renders well in GitHub, VS Code, Obsidian, or any markdown viewer.
+
+**Layout:** rows = weeks, columns = Mon–Sun + summary. Week column contains number and focus theme.
+
+**Cell format (single line, compact):**
+
+| Type | Format |
+|------|--------|
+| Easy run | `Jan 27 🟢 Easy 10km` |
+| Workout | `Jan 28 🔴 Workout 12km · 5×1600m @4:00` |
+| Long run | `Feb 1 🔵 Long 20km · 5:00/km` |
+| Gym | `Jan 30 💪 Gym 60min` |
+| Cross training | `Feb 2 🔄 XT 45min` |
+| Rest | `Jan 27 💤 Rest` |
+| Tuneup race | `Mar 8 🏁 Half-Marathon` |
+
+For workouts, include only the key interval structure (e.g. `5×1600m @4:00`) — not the full warmup/cooldown. Full structure is in the YAML source; the table is for scanning.
+
+**Summary column (rightmost):** total running km for the week + quality km (workouts + long run combined) + weekly focus label.
+
+Example:
+```
+**65km** · quality 32km · Base building
+```
+
+**Example rendered row:**
+
+| Week | Mon | Tue | Wed | Thu | Fri | Sat | Sun | Summary |
+|------|-----|-----|-----|-----|-----|-----|-----|---------|
+| **W1** Base building | Jan 27 🟢 Easy 10km | Jan 28 🔴 Workout 12km · 5×1600m @4:00 | Jan 29 🟢 Easy 8km | Jan 30 💪 Gym 60min | Jan 31 🟢 Easy 10km | Feb 1 🔵 Long 20km | Feb 2 🔄 XT 45min | **65km** · quality 32km |
+
+The export is generated from the YAML plan at any time — re-run after edits to get an updated table. Output path defaults to `training_plan_[plan_id].md` in the current directory.
 
 ---
 
