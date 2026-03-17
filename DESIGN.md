@@ -248,50 +248,59 @@ Week Mar  3–9:  5 runs | 68.1km | 6h45m | Avg HR 141 | Tempo ✓
 
 The problem: for structured workouts and long runs, average pace and HR tell the coach almost nothing. But full lap splits and streams are too large to include in every session context.
 
-**Solution: one-time rule-based lap structure extraction at ingest time.**
+**Solution: one-time hybrid digestion at ingest time.**
 
-When a new run is stored, laps are fetched (1 API call) and processed into a structured segment summary. HR communicates effort — no athlete fitness context required. The coach reads pace + HR the same way a human coach reads a training log. The result is stored as `run_digest` in the run JSON, paid once, read forever.
+When a new run is stored, laps are fetched (1 API call) and compiled into a compact lap table. This table is sent to a small, cheap LLM (e.g. Claude Haiku, GPT-4o-mini) with a constrained output prompt. The resulting digest is stored permanently as `run_digest` in the run JSON — cost paid once at ingest, zero cost per session.
 
-**Output format — structured segments with pace + HR:**
+**Why not pure rule-based:** real-world lap data is too messy. Athletes mix auto-lap (1km) with manual lap presses; Strava does not expose which is which. Progression runs look nothing like intervals or tempo. Elevation changes make pace interpretation misleading without context. A small LLM handles all these cases naturally.
+
+**Why not raw data digestion:** sending full streams (1 data point/second) or hundreds of lap fields is expensive and noisy. The compact lap table — distance, pace, HR, elevation per lap — is typically 50–150 tokens. Cheap, fast, sufficient.
+
+**LLM input — compact lap table:**
+```
+Laps (dist, pace, HR, elev gain):
+1: 1.01km  5:02/km  HR 138  +12m
+2: 1.00km  4:59/km  HR 141   +8m
+3: 0.41km  3:37/km  HR 168   +2m
+4: 0.19km  5:45/km  HR 157   +1m
+5: 0.40km  3:35/km  HR 172   +1m
+6: 0.20km  5:42/km  HR 160   +0m
+...
+```
+
+**LLM output format — structured segments:**
 
 Interval workout:
 ```
-WU 5km @5:00/km HR 140 | 12×400m @3:38/km HR 165→185 rec 90s | CD 5km @5:00/km HR 138
+WU 5km @5:00/km HR 140 | 12×400m @3:38/km HR 165→185 rec 90s | CD 5km @5:00/km HR 138 | +110m
 ```
 
 Tempo:
 ```
-WU 2km @5:30/km HR 132 | Tempo 20min @4:08/km HR 162→171 | CD 2km @5:30/km HR 138
+WU 2km @5:30/km HR 132 | Tempo 20min @4:08/km HR 162→171 | CD 2km @5:30/km HR 138 | +45m
 ```
 
-Long run:
+Progression run:
 ```
-0–28km @4:53/km HR 142→155 | 28–35km @5:20/km HR 155→162
+Progression 16km @5:20→4:35/km HR 138→162 | +85m
 ```
 
-Easy run: no digest — the one-liner is sufficient.
+Long run with fade:
+```
+0–28km @4:53/km HR 142→155 | 28–35km @5:20/km HR 155→162 (fade) | +180m
+```
 
-**Extraction logic (rule-based from laps):**
-1. Cluster laps by pace: fast (work) vs slow (easy/recovery)
-2. First slow cluster → WU; last slow cluster → CD
-3. Alternating fast/slow in middle → intervals: count reps, avg pace per rep, HR range (`first_rep_start_HR → last_rep_peak_HR`), avg recovery duration
-4. Sustained fast block in middle → tempo: duration, avg pace, HR drift (start → end)
-5. No structure detected (uniform pace) → single segment with overall pace + HR drift
+Easy run: **no digestion** — the one-liner is sufficient.
 
-For HR on intervals, `start_HR → peak_HR_of_last_rep` captures both intensity and accumulated fatigue across the set — more informative than a single average.
+**Elevation** is included as total gain at the end of the digest. For hilly runs this gives the coach essential context for interpreting pace without needing per-segment breakdown.
 
-**Classification (to decide whether to fetch laps):**
-- Activity name contains "interval", "tempo", "track", "workout" → fetch laps
-- Median lap distance < 1km → likely intervals, fetch laps
-- HR variability (std dev) above threshold → fetch laps
-- Distance > 25km → long run, fetch laps
-- Otherwise → easy run, skip lap fetch
+**Classification (to decide whether to fetch laps and digest):**
+- Activity name contains "interval", "tempo", "track", "workout", "progression" → digest
+- HR variability (std dev) above threshold → likely structured, digest
+- Distance > 25km → long run, digest
+- Otherwise → easy run, skip
 
-**Caveat:** clean structure extraction relies on the athlete using manual lap button or Garmin workout mode (each rep/recovery = one lap). With auto-lap (1km splits), clustering is fuzzier but still usable — pace variance across 1km laps reveals structure well enough.
-
-**No LLM required** for this step. If training plan context is available (planned workout for that date), it can optionally be appended to the digest line for comparison — but the digest itself is purely computed.
-
-**Full data remains available:** the coach calls `get_run_detail(activity_id)` using the ID shown in the compact format if it needs to go deeper. This covers edge cases and post-race analysis.
+**Full data remains available:** the coach calls `get_run_detail(activity_id)` using the ID shown in the compact format if it needs to go deeper. This covers post-race analysis, anomalies, or athlete queries about a specific split.
 
 ---
 
