@@ -223,18 +223,59 @@ Local cache of Strava activities. Same structure as v1. What changes is what get
 | Discussing a specific run | Full detail fetched on demand |
 | **Never** | Raw streams, full lap arrays, map polylines |
 
-**Compact run format (one line per run):**
+**Compact run format:**
+
+Easy runs get a single line. Structured workouts and long runs get an additional AI-generated digest line (see Run Digestion below). All runs include the Strava activity ID so the coach can fetch full detail on demand.
+
 ```
-Mar 15 | Long Run  | 35.0km  2:51h | 4:53/km | HR 149/184 | 309m ↑
-Mar 14 | Easy      |  9.5km  0:49m | 5:10/km | HR 136/151 |  87m ↑
-Mar 12 | Workout   | 14.5km  1:03m | 4:21/km | HR 162/185 |  45m ↑
+Mar 12 🔴 Workout  14.5km 1:03m | 4:21/km | HR 162/185 | #17701594638
+         → 12×400m @3:38/km avg. Consistent reps 1-8, slight fade reps 9-12 (+4s). HR recovery clean.
+
+Mar 15 🔵 Long Run 35.0km 2:51h | 4:53/km | HR 149/184 | #17735016861
+         → Held pace through 28km, faded to 5:25/km final 7km. HR drift normal. Left knee twinge ~km28.
+
+Mar 14 🟢 Easy      9.5km  0:49m | 5:10/km | HR 136/151 | #17724492849
+Mar 11 🟢 Easy     11.8km  1:04m | 5:22/km | HR 135/152 | #17690349500
 ```
 
 **Weekly summary format:**
 ```
-Week Mar 10–16: 4 runs | 71.3km | 7h02m | Avg HR 143 | Long run ✓
+Week Mar 10–16: 4 runs | 71.3km | 7h02m | Avg HR 143 | Long run ✓ Workout ✓
 Week Mar  3–9:  5 runs | 68.1km | 6h45m | Avg HR 141 | Tempo ✓
 ```
+
+### Run Digestion
+
+The problem: for structured workouts and long runs, average pace and HR tell the coach almost nothing. But full lap splits and streams are too large to include in every session context.
+
+**Solution: one-time AI digestion at ingest time.**
+
+When a new run is stored, it is classified and — if non-trivial — immediately processed into a short natural-language digest. This digest is stored permanently in the run JSON (`ai_digest` field). Cost is paid once at ingest; every subsequent session reads the digest for free.
+
+**Classification (rule-based, no LLM):**
+- Activity name contains "interval", "tempo", "track", "workout" → structured
+- Many short laps (median lap distance < 1km) → interval session
+- High HR variability (std dev > threshold) → likely structured
+- Distance > 25km → long run
+- Otherwise → easy run (no digest needed)
+
+**Digestion process (structured + long runs only):**
+1. Fetch laps for the activity (1 API call at ingest)
+2. If training plan is active: include the planned workout for that date in the prompt
+3. Send laps + context to LLM with a structured summarization prompt
+4. Store result as `ai_digest` in `run_*.json`
+
+**Digest prompt goal:** produce 1–3 sentences covering:
+- What the structure was (inferred from laps if not explicit)
+- Execution quality (consistency, fade/negative split, vs plan if known)
+- Any notable flags (HR anomaly, significant fade, exceptional performance)
+
+**If training plan is connected**, the digest can assess execution vs intent:
+> *"Plan called for 5×1600m @4:00/km — athlete ran shorter reps at faster pace, possible substitution."*
+
+**API cost:** 1 lap fetch per structured/long run at ingest, then zero. The LLM call for digestion can use a fast/cheap model — it is purely numerical pattern recognition.
+
+**Full data remains available:** if the coach needs to go deeper on any run, it calls `get_run_detail(activity_id)` using the ID shown in the compact format. This is rare — the digest covers the coaching-relevant information in the vast majority of cases.
 
 ---
 
@@ -337,7 +378,7 @@ Use **ruamel.yaml** (not PyYAML) so that round-trip edits preserve comments and 
 | Rest | `Jan 27 💤 Rest` |
 | Tuneup race | `Mar 8 🏁 Half-Marathon` |
 
-For workouts, include only the key interval structure (e.g. `5×1600m @4:00`) — not the full warmup/cooldown. Full structure is in the YAML source; the table is for scanning.
+For workouts, include the full key structure (e.g. `5×1600m @4:00 w/90s rec`) and target pace. The table is the primary human-readable artifact for the plan, so cells should contain all relevant details — not truncated. Warmup/cooldown can be abbreviated (`2km WU/CD`) but the main set should be complete.
 
 **Summary column (rightmost):** total running km for the week + quality km (workouts + long run combined) + weekly focus label.
 
