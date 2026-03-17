@@ -4,6 +4,30 @@ This document describes the planned overhaul of the Strava Running Coach. The go
 
 ---
 
+## Implementation Phases
+
+### Phase 1 — Backend + Claude Skill (implement first)
+
+Fix the foundation so the coach works well when used from Claude Code via the existing skill. Testable immediately without any new infrastructure.
+
+1. **Memory overhaul** — replace fragile JSON session notes with `COACH_MEMORY.md` + daily log files; make session close reliable
+2. **Tiered data API** — replace `get_training_report` with `get_weekly_digest` + `get_recent_runs` + `get_run_detail`; strip streams/laps from default context
+3. **Training plan format** — migrate JSON → YAML with ruamel.yaml; derive workout dates from `week_start_date + day_of_week`
+4. **Update Claude skill** (`skills/running-coach/SKILL.md`) — reflect new tools and memory workflow
+
+**Done when:** the coach can be run from Claude Code via the skill and context usage is dramatically lower, with memory persisting correctly across sessions.
+
+### Phase 2 — TUI + Onboarding (implement second)
+
+Build the standalone experience on top of the fixed backend.
+
+1. **TUI** — streaming terminal chat using Rich + prompt_toolkit; MCP client connects to existing server via stdio
+2. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
+3. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
+4. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, prep for public release
+
+---
+
 ## Problems with v1
 
 1. **MCP-only interface** — requires Claude Desktop or Cursor as a host. Not standalone, not portable.
@@ -307,6 +331,88 @@ Training plan → calendar in two phases:
 - Events update when the plan changes
 - Requires one-time OAuth setup (same pattern as Strava auth in setup wizard)
 - Worth it if plan editing mid-block becomes common
+
+---
+
+## TUI Architecture (Phase 2)
+
+### Overview
+
+The TUI is a standalone Python process that acts as an **MCP client** — it spawns the existing MCP server as a subprocess and drives it via the stdio transport. The server code does not change. The TUI gets the full tool suite automatically.
+
+```
+strava-coach (entry point)
+       │
+  Agent loop
+       ├── LLM client (LiteLLM — model agnostic, configured in ~/.strava-coach/config.toml)
+       └── MCP client (mcp.client.stdio)
+                │  spawns as subprocess, stdio transport
+                ▼
+    strava-running-coach MCP server (existing code, unchanged)
+            ├── activity tools
+            ├── coaching tools
+            ├── report tools
+            └── training plan tools
+```
+
+### Agent Loop
+
+```python
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        tools = await session.list_tools()
+        # convert MCP tool specs → LiteLLM tool format
+        # build system prompt: persona + COACH_MEMORY + activity digest
+        # run streaming LLM loop:
+        #   LLM responds → stream to terminal via Rich
+        #   LLM calls tool → execute via MCP session → return result → continue
+```
+
+### Rendering
+
+**Rich** for output rendering:
+- LLM text streams in as generated
+- Tool calls shown as dim inline annotations: `[fetching recent runs...]`
+- No windowed layout — scrolling terminal output, same aesthetic as Claude Code
+
+**prompt_toolkit** for input:
+- Bottom-of-screen input with readline history
+- `/exit`, `/memory`, `/plan` slash commands
+
+### Startup Sequence
+
+```
+$ strava-coach
+  Select coach: [1] Coach  [2] David  [3] Roland  [4] Kim  [5] Hartmann
+  > 3
+
+  Syncing activities... 2 new runs since Mar 14.
+
+  Coach Roland: Hey Pete. Big week — 35km long run on Sunday, HR
+  looked solid through 30km. What are we working on today?
+  >
+```
+
+### Session Close
+
+When the user exits (`/exit` or Ctrl+C):
+1. TUI sends a final message to the LLM: *"Session ending. Write a 3–5 line summary of what was discussed."*
+2. LLM responds with summary
+3. TUI writes summary to `~/.strava-coach/memory/YYYY-MM-DD.md` automatically — not LLM-dependent
+
+### Config (`~/.strava-coach/config.toml`)
+
+```toml
+[strava]
+client_id = "..."
+client_secret = "..."
+refresh_token = "..."
+
+[llm]
+provider = "anthropic"   # or "openai", "ollama", etc.
+model = "claude-sonnet-4-5"
+api_key = "..."
+```
 
 ---
 
