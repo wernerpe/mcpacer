@@ -51,6 +51,8 @@ dmypy.json
 # Project data (user-specific)
 run_data/
 training_plans/
+coaching_data/COACH_MEMORY.md
+coaching_data/session_logs/
 coaching_data/session_notes*.json
 coaching_data/athlete_profile*.json
 coaching_data/plan_adjustments*.json

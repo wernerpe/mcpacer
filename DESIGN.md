@@ -10,22 +10,29 @@ This document describes the planned overhaul of the Strava Running Coach. The go
 
 Fix the foundation so the coach works well when used from Claude Code via the existing skill. Testable immediately without any new infrastructure.
 
-1. **Memory overhaul** — replace fragile JSON session notes with `COACH_MEMORY.md` + daily log files; make session close reliable
-2. **Tiered data API** — replace `get_training_report` with `get_weekly_digest` + `get_recent_runs` + `get_run_detail`; strip streams/laps from default context
-3. **Training plan format** — migrate JSON → YAML with ruamel.yaml; derive workout dates from `week_start_date + day_of_week`
-4. **Update Claude skill** (`skills/running-coach/SKILL.md`) — reflect new tools and memory workflow
+1. **Memory overhaul** — replace fragile JSON session notes with `COACH_MEMORY.md` (section-level inline editing) + daily session logs
+2. **Run context engine** — replace `get_training_report` with `get_run_context()` (server-rendered, age-tiered) + `get_run_detail()` (on-demand)
+3. **Run digestion** — one-time LLM digest at ingest, incorporating athlete's Strava description; coach can annotate runs after the fact via `add_run_note()`
+4. **Training plan format** — migrate JSON → YAML with ruamel.yaml; surgical editing tools instead of whole-file rewrites
+5. **Update Claude skill** (`skills/running-coach/SKILL.md`) — reflect new tools and startup flow
 
 **Done when:** the coach can be run from Claude Code via the skill and context usage is dramatically lower, with memory persisting correctly across sessions.
 
-### Phase 2 — TUI + Onboarding (implement second)
+### Phase 2 — Plan Export + Repo Cleanup
+
+Make the training plan useful outside the coaching session.
+
+1. **Markdown table export** — `strava-coach export-plan [plan_id]` → `.md` file with week × day table
+2. **Calendar export** — `strava-coach export-calendar [plan_id]` → `.ics` file for Google/Apple Calendar
+3. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, `example.config.toml`
+
+### Phase 3 — TUI + Onboarding
 
 Build the standalone experience on top of the fixed backend.
 
 1. **TUI** — streaming terminal chat using Rich + prompt_toolkit; MCP client connects to existing server via stdio
 2. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
 3. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
-4. **Plan export** — `strava-coach export-plan` (markdown table) and `strava-coach export-calendar` (ICS)
-5. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, prep for public release
 
 ---
 
@@ -33,9 +40,10 @@ Build the standalone experience on top of the fixed backend.
 
 1. **MCP-only interface** — requires Claude Desktop or Cursor as a host. Not standalone, not portable.
 2. **Context flooding** — `get_training_report` dumps raw JSON for every run in 4 weeks, including full per-lap splits, into the LLM context. Expensive and largely noise.
-3. **Fragile memory** — the coach relies on the LLM proactively calling `save_coaching_note` with correctly-formed JSON at session end. If the session ends abruptly or the LLM skips it, nothing is saved. Notes are stored as JSON blobs, which are harder to read back than prose.
-4. **Training plans stored as JSON** — deeply nested, error-prone to edit by hand, LLMs tend to regenerate the whole file rather than make surgical edits.
+3. **Fragile memory** — the coach relies on the LLM proactively calling `save_coaching_note` with correctly-formed JSON at session end. If the session ends abruptly or the LLM skips it, nothing is saved. Notes are stored as JSON blobs, which are harder to read back than prose. The separate `athlete_profile` and `plan_adjustments` stores were never actually used — all context ended up scattered across session notes.
+4. **Training plans stored as JSON** — deeply nested, error-prone to edit by hand, LLMs tend to regenerate the whole file rather than make surgical edits. Plan adjustments were recorded in a separate log rather than in the plan itself, so the plan file diverged from reality.
 5. **No clean setup flow** — requires manual `.env` configuration, no guided onboarding.
+6. **Run data lacks athlete voice** — treadmill runs have notoriously inaccurate GPS paces, but the system had no way to incorporate the athlete's own description or post-hoc corrections. The coach had to rediscover context every session.
 
 ---
 
@@ -103,15 +111,16 @@ Built with **Textual** (Python TUI framework). Layout:
 
 ### Startup Sequence (Every Session)
 
-1. **Sync new activities** — fetch activities since last session, store locally (compact format, no streams)
-2. **Select persona** — small menu presented before chat opens:
+1. **Select persona** — small menu presented before chat opens:
    ```
    Select coach: [1] Coach (default)  [2] David  [3] Roland  [4] Kim  [5] Hartmann
    ```
-3. **Build context** (loaded into system prompt, not shown to user):
+2. **Refresh run data** — calls `get_run_context()` which syncs new activities and builds the tiered context snapshot (see Run Context Engine below)
+3. **Build system prompt** (not shown to user):
+   - Coaching persona
    - `COACH_MEMORY.md`
-   - Compact digest of activities since last session
-   - Last 2 daily session logs
+   - Run context snapshot from step 2
+   - Recent session logs (since last session, capped at 5)
 4. **Coach opens** with a brief acknowledgment of what happened since last session, then hands it to the user
 
 Each session is **fresh** (no conversation history carried over). Memory files provide continuity.
@@ -165,7 +174,7 @@ All memory lives in `~/.strava-coach/` (user's home, not the repo).
 
 ### `COACH_MEMORY.md` — Long-term memory
 
-The coach's curated knowledge about the athlete. LLM-written and LLM-maintained. Read on every session start.
+The coach's curated knowledge about the athlete. **LLM-written and LLM-maintained** via section-level inline editing tools. Read in full on every session start.
 
 ```markdown
 ## Athlete
@@ -196,11 +205,28 @@ The coach's curated knowledge about the athlete. LLM-written and LLM-maintained.
 - [Observations the coach has made, e.g. "tends to go out too fast on tempos"]
 ```
 
-Coach should update this file when significant new information emerges (new injury flag, goal change, notable pattern identified). Update is done inline — rewrite the relevant section, not append.
+**What goes here:** what is true *now*. Current state, not event history.
+
+**When to update:** when significant new information emerges mid-session — new injury, goal change, notable pattern. The coach calls the section-level update tool inline, not at session end. This means memory updates happen the moment something important is said, not deferred.
+
+#### Memory Tools
+
+**`read_coach_memory()`** — returns the full `COACH_MEMORY.md` content. Available on demand (also loaded into system prompt at session start).
+
+**`update_coach_memory(section, content)`** — rewrites a specific section in-place. The `section` parameter maps to the `## ` headers: `athlete`, `prs`, `goals`, `active_flags`, `training_context`, `patterns`. The tool finds the matching `## ` header, replaces everything up to the next `## ` (or EOF), and writes the file. If the section doesn't exist, it appends a new section.
+
+No whole-file rewrite tool. If the coach needs to update multiple sections, it calls `update_coach_memory` once per section. This keeps changes auditable — each tool call shows exactly what changed and why.
+
+Example:
+```
+Coach notices athlete mentions a new knee issue →
+  update_coach_memory("active_flags",
+    "- Groin pull from gym — first noted 2026-03-19, improving\n- Left knee twinge on long runs >28km — first noted 2026-03-23")
+```
 
 ### `memory/YYYY-MM-DD.md` — Daily session logs
 
-Auto-written by the TUI at session end (not LLM-dependent — the TUI writes it regardless). One file per session day. Raw notes for recent context.
+Auto-written by the TUI at session end (not LLM-dependent — the TUI writes it regardless). One file per session day.
 
 ```markdown
 ## Session [date] — Coach [name]
@@ -212,63 +238,197 @@ Auto-written by the TUI at session end (not LLM-dependent — the TUI writes it 
 
 The TUI asks the coach to produce a 3–5 line session summary at the end of each conversation, then writes it to this file automatically. The coach cannot "forget" to save — the save is triggered by the TUI, not the LLM.
 
-### Run database — `~/.strava-coach/run_data/run_*.json`
+**What goes here:** what happened *when*. Event history, not current state.
 
-Local cache of Strava activities. Same structure as v1. What changes is what gets **fed to the LLM context**:
+**Boundary with COACH_MEMORY.md:** the session log records "discussed groin pain, decided to skip Wednesday workout." The coach memory records "groin pull — first noted 2026-03-19, improving." If a fact matters beyond its session, it belongs in COACH_MEMORY.md. Session logs are raw notes for recent context only.
 
-| Situation | What goes into context |
-|---|---|
-| Session startup | Compact digest of runs since last session |
-| Weekly overview | 4-week summary table (one line per week) |
-| Discussing a specific run | Full detail fetched on demand |
-| **Never** | Raw streams, full lap arrays, map polylines |
+**How many get loaded:** all session logs since the last session, capped at 5. This handles both daily users (1 log) and someone returning after a week off (5 logs covering the gap). For a Phase 1 Claude Skill session (no TUI), the skill reads the most recent 3 session log files from `memory/`.
 
-**Compact run format:**
+---
 
-Easy runs get a single line. Structured workouts and long runs get an additional AI-generated digest line (see Run Digestion below). All runs include the Strava activity ID so the coach can fetch full detail on demand.
+## Run Context Engine
+
+### The problem
+
+v1 dumped raw JSON for every run in 4 weeks including full lap splits. This flooded the context with noise. But the coach genuinely needs a complete picture of the training block — you can't coach a marathon build from the last 3 runs.
+
+### Solution: `get_run_context()`
+
+A single MCP tool that builds a **server-rendered, age-tiered text snapshot** of the athlete's training. No JSON. No arrays of objects. A pre-formatted text block ready for the LLM to read immediately.
+
+The server does all orchestration internally:
+1. Syncs any new activities from Strava (1 API call per new run + 1 laps call if digestion needed)
+2. Renders the tiered output based on date ranges
+
+`get_run_context()` is purely actual run data — no plan awareness. The plan context is loaded separately via `get_plan_context()` (see below). The coach sees both blocks and makes the comparison itself, which allows nuanced interpretation ("did 10×1km instead of 5×1km — ambitious but HR looked fine") rather than a mechanical pass/fail.
+
+#### Tiering Rules
+
+| Age | Format | Detail level |
+|-----|--------|--------------|
+| **Older weeks** (>2 weeks ago, or pre-plan) | One-liner per week | Total km, run count, key sessions (long run + workout), pass/fail |
+| **Recent weeks** (current + previous 1–2) | One line per run | Compact format with digest line for workouts/long runs |
+
+Weeks older than 12 weeks or before the plan start date are omitted entirely.
+
+#### Output format
 
 ```
-Mar 12 🔴 Workout  14.5km 1:03m | 4:21/km | HR 162/185 | #17701594638
-         → 12×400m @3:38/km avg. Consistent reps 1-8, slight fade reps 9-12 (+4s). HR recovery clean.
+=== TRAINING OVERVIEW ===
 
-Mar 15 🔵 Long Run 35.0km 2:51h | 4:53/km | HR 149/184 | #17735016861
-         → Held pace through 28km, faded to 5:25/km final 7km. HR drift normal. Left knee twinge ~km28.
+Weeks 1–6 (Feb 2 – Mar 15):
+W1  Feb 2   75km | 5 runs | Long 27km | Workout: 5×1600m @4:00 ✓
+W2  Feb 9   83km | 5 runs | Long 30km | Workout: 6×1200m @3:55 ✓
+W3  Feb 16  88km | 5 runs | Long 28km | Workout: 3×4km @4:03 ✓
+W4  Feb 23  65km | 4 runs | Long 28km (easy, deload) | ⚠ Deload — bad weather
+W5  Mar 2   95km | 5 runs | Long 34km w/16km MP | Workout: 8×800m @3:40 ✓
+W6  Mar 9   72km | 4 runs | Long 32km | Tempo 10km @4:10 ✓
 
-Mar 14 🟢 Easy      9.5km  0:49m | 5:10/km | HR 136/151 | #17724492849
-Mar 11 🟢 Easy     11.8km  1:04m | 5:22/km | HR 135/152 | #17690349500
+=== RECENT DETAIL ===
+
+Week 7 — Mar 16–22
+  Mon Mar 16 🟢 Easy 5.0km 0:27m | 5:24/km | HR 128/142 | #17750001
+  Tue Mar 17 🟢 Easy 11.9km 1:03m | 5:19/km | HR 130/148 | #17760002
+       → Best paced easy run in weeks. Controlled throughout.
+  Wed Mar 18 — rest (groin recovery)
+  Thu Mar 19 🔴 Workout 12.0km 0:48m | 4:01/km | HR 158/182 | #17770003
+       → 10×1km @~3:45/km (treadmill, GPS pace unreliable). Felt manageable.
+       📝 Athlete did 10×1km instead of prescribed 5×1km — double volume on taper week
+  Fri Mar 20 🟢 Easy 4.5km 0:24m | 5:20/km | HR 132/145 | #17780004
+
+Week 8 — Mar 23–29 (current)
+  (no runs yet)
+
+For detail on any run: get_run_detail(activity_id)
 ```
 
-**Weekly summary format:**
+**Key properties:**
+- The entire output is a single string, rendered server-side — the LLM reads it like a document, not structured data
+- Activity IDs are inline (`#17770003`) so the coach can drill into any run on demand
+- The `📝` lines are coach notes added via `add_run_note()` — they persist across sessions
+- The `→` digest lines are generated once at ingest time (see Run Digestion)
+- Weekly one-liners are computed on the fly from the run cache — no separate compaction store needed
+
+### `get_plan_context()`
+
+Returns the active training plan rendered as compact text. If no active plan exists, returns `"No active training plan."` — the coach works fine without one (off-season, casual running, etc.).
+
+The plan is small enough to load in full. A 16-week plan at one line per week is ~1,600–2,000 chars — trivially fits in context.
+
+#### Output format
+
 ```
-Week Mar 10–16: 4 runs | 71.3km | 7h02m | Avg HR 143 | Long run ✓ Workout ✓
-Week Mar  3–9:  5 runs | 68.1km | 6h45m | Avg HR 141 | Tempo ✓
+=== ACTIVE PLAN: Sub-3 Marathon Build ===
+Race: Marathon — Apr 4, 2026 — Goal 2:59:59 (4:15/km)
+Status: Week 8 of 9 (taper)
+
+W1  Feb 2   75km  Base building
+    Mon 10km easy | Tue 12km easy | Wed 2km WU, 5×1600m @4:00 w/400m jog rec, 2km CD | Thu 💪 Gym 60min | Fri 8km recovery | Sun 27km easy
+W2  Feb 9   83km  Building volume
+    Mon 8km recovery | Tue 12km easy | Wed 2km WU, 6×1200m @3:55 w/400m jog rec, 2km CD | Thu 💪 Gym 60min | Fri 10km easy | Sun 30km easy
+W3  Feb 16  88km  Intro MP work
+    Mon 8km recovery | Tue 12km easy | Wed 2km WU, 3×4km @4:03 w/3min jog rec, 2km CD | Thu 💪 Gym 60min | Fri 10km easy | Sun 28km w/10km MP
+W4  Feb 23  65km  # Deload — bad weather
+    Mon 8km recovery | Tue 10km easy | Wed treadmill workout | Fri 8km easy | Sun 28km easy
+W5  Mar 2   95km  Peak week
+    Mon 10km easy | Tue 12km easy | Wed 2km WU, 8×800m @3:40 w/90s standing rec, 2km CD | Thu 6km AM + 6km PM recovery | Fri 10km easy | Sun 34km w/16km MP
+W6  Mar 9   72km  Recovery week
+    Mon 8km recovery | Wed tempo 10km @4:10 | Thu 💪 Gym 60min | Fri 8km easy | Sun 32km easy
+W7  Mar 16  80km  Final quality
+    Mon 10km easy | Tue 12km easy | Wed 2km WU, 5×1km @3:50 w/400m jog rec, 2km CD | Thu 8km recovery | Fri 6km easy | Sun 28km @5:00
+→ W8  Mar 23  70km  Taper  ← CURRENT
+    Mon 8km recovery | Tue 10km easy | Wed 2km WU, 4×1km @3:55 w/400m jog rec, 2km CD | Fri 6km easy | Sat 24km easy
+W9  Mar 30  60km  Race week
+    Mon 6km easy | Wed 4km shakeout | Fri 3km shakeout | Sat RACE Apr 4
+
+For full plan YAML: get_training_plan("sub3-marathon-apr2026")
 ```
 
-### Run Digestion
+Each week gets two lines: a header with total volume and weekly focus, then the day-by-day prescription. Every run is listed with its day, distance, and type (easy, recovery, shakeout, etc.). Workouts include the full structure with rest type and duration between intervals (e.g. `w/400m jog rec`, `w/90s standing rec`). Long runs show distance and intent (easy, MP blocks, etc.). Non-running days (gym, rest) are included where prescribed.
+
+The `→` marker and `← CURRENT` label highlight the active week. YAML comments from `add_plan_comment()` are rendered inline on the header line (e.g. `# Deload — bad weather`).
+
+A 16-week plan at two lines per week is ~3,000–4,000 chars — still very manageable in context.
+
+The coach can call `get_training_plan(plan_id)` for the full YAML if it needs to inspect or edit individual workouts.
+
+### `get_run_detail(activity_id)`
+
+On-demand deep dive into a single run. Returns full lap splits, HR zones, elevation profile, and any coach notes. Used for post-race analysis, anomalies, or when the athlete asks about specific splits. Costs 0–1 Strava API calls (0 if data is already cached with laps).
+
+---
+
+## Run Digestion
 
 The problem: for structured workouts and long runs, average pace and HR tell the coach almost nothing. But full lap splits and streams are too large to include in every session context.
 
-**Solution: one-time hybrid digestion at ingest time.**
+### Solution: one-time hybrid digestion at ingest time
 
-When a new run is stored, laps are fetched (1 API call) and compiled into a compact lap table. This table is sent to a small, cheap LLM (e.g. Claude Haiku, GPT-4o-mini) with a constrained output prompt. The resulting digest is stored permanently as `run_digest` in the run JSON — cost paid once at ingest, zero cost per session.
+When a new run is stored, if it qualifies for digestion, laps are fetched (1 API call) and compiled into a compact lap table. This table — along with the **athlete's Strava description** — is sent to a small, cheap LLM (e.g. Claude Haiku, GPT-4o-mini). The resulting digest is stored permanently in the run JSON. Cost paid once at ingest, zero cost per session.
 
-**Why not pure rule-based:** real-world lap data is too messy. Athletes mix auto-lap (1km) with manual lap presses; Strava does not expose which is which. Progression runs look nothing like intervals or tempo. Elevation changes make pace interpretation misleading without context. A small LLM handles all these cases naturally.
+### Run data model (stored in `run_*.json`)
 
-**Why not raw data digestion:** sending full streams (1 data point/second) or hundreds of lap fields is expensive and noisy. The compact lap table — distance, pace, HR, elevation per lap — is typically 50–150 tokens. Cheap, fast, sufficient.
+Each run has two annotation fields beyond the raw Strava data:
 
-**LLM input — compact lap table:**
+```json
+{
+  "run_digest": "10×1km @~3:45/km (treadmill, GPS pace unreliable). HR 158→172.",
+  "coach_notes": [
+    "Athlete did 10×1km instead of prescribed 5×1km — double volume on taper week"
+  ]
+}
 ```
+
+**`run_digest`** — generated once at ingest by the digestion LLM. Immutable after creation.
+
+**`coach_notes`** — a list that grows over time as the coach annotates runs during conversation. Added via `add_run_note(activity_id, note)`.
+
+### Digestion input: athlete description is authoritative
+
+The digestion LLM receives both the compact lap table AND the athlete's Strava activity description (the free-text field they write on the app). The prompt treats the athlete's description as ground truth:
+
+```
+Summarize this workout structure from the lap data below.
+
+IMPORTANT: The athlete's description is authoritative. If they mention treadmill,
+treat GPS pace data as approximate and prefer any paces they state. If the
+description contradicts lap data, prefer the description.
+
+Activity name: "10x1km treadmill"
+Athlete description: "10x1km on treadmill, ~3:45 pace, felt smooth. Groin OK."
+
 Laps (dist, pace, HR, elev gain):
-1: 1.01km  5:02/km  HR 138  +12m
-2: 1.00km  4:59/km  HR 141   +8m
-3: 0.41km  3:37/km  HR 168   +2m
-4: 0.19km  5:45/km  HR 157   +1m
-5: 0.40km  3:35/km  HR 172   +1m
-6: 0.20km  5:42/km  HR 160   +0m
+1: 1.01km  4:12/km  HR 158  +0m
+2: 0.98km  4:08/km  HR 162  +0m
+3: 1.02km  4:15/km  HR 160  +0m
 ...
 ```
 
-**LLM output format — structured segments:**
+Output: `10×1km @~3:45/km (treadmill, GPS pace unreliable). HR 158→172. Groin OK.`
+
+Without the description, the digester would report ~4:12/km from GPS — completely wrong for treadmill. The athlete's stated ~3:45 is what matters.
+
+**If no description is provided,** the digester works from lap data alone (same as before). The description is an optional but high-value signal.
+
+### `add_run_note(activity_id, note)`
+
+MCP tool that appends a note to the run's `coach_notes` array in the cached JSON. The coach calls this during conversation when the athlete says something that changes interpretation of a run.
+
+Example flow:
+> Athlete: "That Thursday run, my watch was glitching for the first 2km, ignore those splits"
+> Coach calls: `add_run_note(17770003, "Watch GPS glitch first 2km — ignore those splits")`
+
+Coach notes are always rendered when that run appears in context (via `get_run_context()` or `get_run_detail()`), prefixed with `📝`. They persist across sessions — the next time any coach sees this run, the note is there.
+
+### Why not pure rule-based digestion
+
+Real-world lap data is too messy. Athletes mix auto-lap (1km) with manual lap presses; Strava does not expose which is which. Progression runs look nothing like intervals or tempo. Elevation changes make pace interpretation misleading without context. Treadmill GPS is garbage. A small LLM handles all these cases naturally — especially when the athlete's own description provides the missing context.
+
+### Why not raw data digestion
+
+Sending full streams (1 data point/second) or hundreds of lap fields is expensive and noisy. The compact lap table — distance, pace, HR, elevation per lap — is typically 50–150 tokens. The athlete description adds another 10–50 tokens. Cheap, fast, sufficient.
+
+### LLM output format — structured segments
 
 Interval workout:
 ```
@@ -294,13 +454,12 @@ Easy run: **no digestion** — the one-liner is sufficient.
 
 **Elevation** is included as total gain at the end of the digest. For hilly runs this gives the coach essential context for interpreting pace without needing per-segment breakdown.
 
-**Classification (to decide whether to fetch laps and digest):**
+### Classification (to decide whether to fetch laps and digest)
+
 - Activity name contains "interval", "tempo", "track", "workout", "progression" → digest
 - HR variability (std dev) above threshold → likely structured, digest
 - Distance > 25km → long run, digest
 - Otherwise → easy run, skip
-
-**Full data remains available:** the coach calls `get_run_detail(activity_id)` using the ID shown in the compact format if it needs to go deeper. This covers post-race analysis, anomalies, or athlete queries about a specific split.
 
 ---
 
@@ -311,10 +470,10 @@ Strava rate limit: 100 requests/15 min, 1000 requests/day. Design conservatively
 | Operation | Calls |
 |---|---|
 | Onboarding activity fetch (4 weeks) | ~20 |
-| Session startup sync (per new activity) | 1 per run |
+| Session startup sync (per new activity) | 1 summary + 1 laps (if digested) per run |
 | On-demand run detail | 1 per activity |
 | Streams | Never automatically; only if coach explicitly requests |
-| **Typical daily total** | **~5–10** |
+| **Typical daily total** | **~5–15** |
 
 ---
 
@@ -323,8 +482,9 @@ Strava rate limit: 100 requests/15 min, 1000 requests/day. Design conservatively
 Switch from JSON to **YAML**. Same structure, same parsing logic, but:
 - Human-readable without a JSON formatter
 - Supports inline comments (`# Recovery week — cut volume ~20%`)
-- LLMs make surgical edits without regenerating the whole file
+- LLMs make surgical edits via dedicated tools without regenerating the whole file
 - No trailing comma / bracket mismatch errors
+- Plan adjustments are documented *in the plan itself* as comments, not in a separate log
 
 Workout dates are **derived at read time** from `week_start_date + offset(day_of_week)` rather than stored per-workout. This means moving a training block only requires updating `week_start_date`, not editing 112 individual date fields.
 
@@ -357,7 +517,7 @@ weeks:
         type: workout
         distance_km: 12
         target_pace_min_per_km: "4:15"
-        structure: 2km WU, 5×1600m @4:00 w/400m rec, 2km CD
+        structure: 2km WU, 5×1600m @4:00 w/400m jog rec, 2km CD
         description: Threshold intervals
 
       - day_of_week: Thursday
@@ -377,9 +537,33 @@ weeks:
         description: Cycling or swimming — active recovery
 ```
 
-**Migration:** one-time script converts existing `plan_*.json` → `plan_*.yaml`.
-
 Use **ruamel.yaml** (not PyYAML) so that round-trip edits preserve comments and formatting.
+
+### Training Plan Tools
+
+No whole-plan rewrite tool. All modifications are surgical:
+
+**`get_training_plan(plan_id)`** — returns the YAML content as-is (human-readable).
+
+**`list_training_plans()`** — lists available plans with basic metadata (name, race date, status).
+
+**`update_plan_run(plan_id, week_number, day_of_week, updates)`** — modifies a single workout within a week. `updates` is a dict of fields to change. The tool loads the YAML via `ruamel.yaml`, finds the matching week + day, patches only the specified fields, and writes back preserving all comments and formatting.
+
+Example: `update_plan_run("boston-2027", 4, "Sunday", {type: "easy", distance_km: 28, description: "Easy long run — deload week, no MP block"})`
+
+**`update_plan_week(plan_id, week_number, updates)`** — updates week-level metadata (`weekly_focus`, `total_planned_distance_km`).
+
+**`add_plan_run(plan_id, week_number, run)`** — adds a new workout to a week.
+
+**`remove_plan_run(plan_id, week_number, day_of_week)`** — removes a workout from a week.
+
+**`add_plan_comment(plan_id, week_number, comment)`** — appends a YAML comment to the week block (e.g. `# Deload week — groin recovery, cut volume 30%`). This is how adjustments get documented *in the plan itself* rather than in a separate adjustments log. The comment persists through all future reads and exports.
+
+**`analyze_plan_adherence(plan_id)`** — compares planned vs actual workouts using the run cache. Returns a compact summary of what was hit, missed, or modified.
+
+**Why no whole-file rewrite:** LLMs tend to regenerate entire plan files when given the chance, introducing subtle errors (wrong dates, dropped workouts, lost comments). Surgical tools force targeted changes that show up clearly in diffs and preserve everything the LLM didn't touch.
+
+**Migration:** one-time script converts existing `plan_*.json` → `plan_*.yaml`.
 
 ---
 
@@ -440,6 +624,77 @@ Training plan → calendar in two phases:
 
 ---
 
+## Session Startup Flow
+
+Whether running from the TUI or the Claude Skill, every session follows the same sequence:
+
+```
+1. Load persona
+2. Call read_coach_memory()   → long-term athlete knowledge
+3. Call get_run_context()     → syncs new runs, returns tiered training snapshot
+4. Call get_plan_context()    → returns active plan as compact text (or "no plan")
+5. Call get_session_logs()    → recent session summaries for conversation continuity
+6. Coach opens conversation with full context
+```
+
+In the **TUI**, steps 1–5 are automated before the first message. In the **Claude Skill**, the skill prescribes these as the first tool calls.
+
+The output of steps 2–5 forms the complete coaching context — everything the coach needs to have the full picture without being flooded with raw data. Run data and plan data are loaded independently so either can exist without the other.
+
+---
+
+## MCP Tool Summary
+
+### Memory Tools
+| Tool | Purpose |
+|------|---------|
+| `read_coach_memory()` | Returns full COACH_MEMORY.md content |
+| `update_coach_memory(section, content)` | Rewrites a specific section inline |
+| `get_session_logs(limit=3)` | Returns the most recent N daily session logs as concatenated text |
+
+### Run Tools
+| Tool | Purpose |
+|------|---------|
+| `get_run_context()` | Server-rendered tiered training snapshot (the main context tool) |
+| `get_run_detail(activity_id)` | Full detail on a single run (on-demand) |
+| `add_run_note(activity_id, note)` | Annotate a run with coach/athlete context |
+
+### Strava API Tools (raw access)
+| Tool | Purpose |
+|------|---------|
+| `get_activities(limit)` | Fetch recent activities from Strava (raw) |
+| `get_activities_by_date_range(start, end)` | Fetch activities in a date range (raw) |
+| `get_activity_by_id(activity_id)` | Full raw activity data including streams/laps |
+| `get_recent_activities(days)` | Activities from the last N days (raw) |
+
+These are the existing v1 Strava tools, kept as-is. They return raw Strava API data and are **not** the primary context-loading path — `get_run_context()` handles that. Use these for edge cases: debugging sync issues, looking up non-running activities, or when the coach needs raw data that the tiered context doesn't surface.
+
+### Training Plan Tools
+| Tool | Purpose |
+|------|---------|
+| `get_plan_context()` | Server-rendered compact plan snapshot (the main plan context tool) |
+| `get_training_plan(plan_id)` | Returns full YAML plan content (for inspection/editing) |
+| `list_training_plans()` | Lists available plans |
+| `update_plan_run(plan_id, week, day, updates)` | Modify a single workout |
+| `update_plan_week(plan_id, week, updates)` | Modify week-level metadata |
+| `add_plan_run(plan_id, week, run)` | Add a workout to a week |
+| `remove_plan_run(plan_id, week, day)` | Remove a workout |
+| `add_plan_comment(plan_id, week, comment)` | Add YAML comment to a week |
+| `analyze_plan_adherence(plan_id)` | Compare planned vs actual |
+
+### Coaching Tools
+| Tool | Purpose |
+|------|---------|
+| `get_coaching_personas()` | List available coach personas |
+| `add_coaching_feedback(activity_id, feedback)` | Post feedback to Strava activity description |
+
+### Session Tools (TUI only)
+| Tool | Purpose |
+|------|---------|
+| `save_session_log(date, content)` | Write daily session log (called by TUI, not LLM) |
+
+---
+
 ## TUI Architecture (Phase 2)
 
 ### Overview
@@ -455,10 +710,10 @@ strava-coach (entry point)
                 │  spawns as subprocess, stdio transport
                 ▼
     strava-running-coach MCP server (existing code, unchanged)
-            ├── activity tools
-            ├── coaching tools
-            ├── report tools
-            └── training plan tools
+            ├── memory tools
+            ├── run tools
+            ├── training plan tools
+            └── coaching tools
 ```
 
 ### Agent Loop
@@ -468,7 +723,7 @@ async with stdio_client(server_params) as (read, write):
     async with ClientSession(read, write) as session:
         tools = await session.list_tools()
         # convert MCP tool specs → LiteLLM tool format
-        # build system prompt: persona + COACH_MEMORY + activity digest
+        # build system prompt: persona + COACH_MEMORY + run context + session logs
         # run streaming LLM loop:
         #   LLM responds → stream to terminal via Rich
         #   LLM calls tool → execute via MCP session → return result → continue
@@ -544,5 +799,25 @@ Keep it. Users running Claude Desktop or other MCP hosts can still use the serve
 
 - Coaching persona system (`coaching_data/personas/`) — solid, no changes
 - `add_coaching_feedback` tool (posts to Strava activity descriptions) — keep
+- Raw Strava API tools (`get_activities`, `get_activities_by_date_range`, `get_activity_by_id`, `get_recent_activities`) — keep for edge cases and raw data access
 - Local run caching pattern (`RunStorage`) — keep, just change what gets reported from it
+- Strava client (`strava_client.py`) — keep, unchanged
 - `pyproject.toml` / `uv` toolchain — keep
+
+---
+
+## Code Cleanup
+
+This is a rewrite, not a patch. Old code that is replaced by v2 should be **deleted, not left around**. Specifically:
+
+- **`get_training_report`** — replaced by `get_run_context()`. Delete the tool and its report-generation logic entirely.
+- **`save_coaching_note` / `get_session_notes`** — replaced by `COACH_MEMORY.md` + daily session logs. Delete the JSON session notes system.
+- **`update_athlete_profile` / `get_athlete_profile`** — never worked in practice, replaced by `COACH_MEMORY.md`. Delete the athlete profile JSON system.
+- **`plan_adjustments` storage** — never used, replaced by YAML comments in the plan itself. Delete.
+- **`save_training_plan` (whole-file write)** — replaced by surgical YAML editing tools. Delete.
+- **`get_coaching_context` (v1 monolith loader)** — replaced by the separate startup flow (`read_coach_memory` + `get_run_context` + `get_plan_context` + session logs). Delete.
+- **JSON training plan storage** — replaced by YAML. Delete `TrainingPlanStorage` JSON logic, keep only YAML read/write.
+- **`CoachingStorage` class** — most of it is obsolete (session notes, athlete profile, plan adjustments). Gut it down to just persona loading, or inline that into the coaching tools directly.
+- **CLI commands** (`strava-generate-report`, `strava-analyze-plan`, `strava-generate-calendar`) — evaluate which are still needed after v2 tools exist. Don't keep dead entry points.
+
+The goal is a clean codebase where every file and function earns its place. If something is replaced by a v2 equivalent, the old version goes away — no compatibility shims, no "legacy" modules, no dead code behind flags.

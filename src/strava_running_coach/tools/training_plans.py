@@ -1,278 +1,270 @@
-"""MCP tools for training plan management."""
+"""MCP tools for YAML training plan management — surgical edits only."""
 
 import json
-from datetime import datetime
 from typing import Any
 
-from strava_running_coach.storage.runs import RunStorage
-from strava_running_coach.storage.training_plans import TrainingPlanStorage
-from strava_running_coach.utils.formatting import format_pace
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+
+from strava_running_coach.plan_context import render_plan_context
+from strava_running_coach.storage.training_plans import TrainingPlanStorage, DAY_ORDER
 
 
 def register_training_plan_tools(mcp):
     """Register training plan MCP tools."""
 
     plan_storage = TrainingPlanStorage()
-    run_storage = RunStorage()
 
     @mcp.tool()
-    def save_training_plan(plan_json: str, plan_id: str | None = None) -> dict[str, Any]:
+    def get_plan_context() -> str:
         """
-        Save a training plan.
+        Get the active training plan rendered as compact text.
 
-        Claude should translate the user's text description into the JSON format
-        defined in TRAINING_PLAN_FORMAT.md before calling this tool.
-
-        Args:
-            plan_json: JSON string containing the training plan data
-            plan_id: Optional plan ID. If not provided, one will be generated.
+        Returns a two-line-per-week overview with the current week highlighted.
+        If no active plan exists, returns a message saying so — the coach
+        works fine without a plan (off-season, casual running, etc.).
 
         Returns:
-            Dictionary with plan_id and saved status
+            Pre-formatted plan overview text.
         """
-        try:
-            plan = json.loads(plan_json)
-        except json.JSONDecodeError as e:
-            return {"error": f"Invalid JSON: {e}"}
+        plan_id = plan_storage.get_active_plan_id()
+        if not plan_id:
+            return "No active training plan."
 
-        try:
-            saved_id = plan_storage.save_plan(plan, plan_id)
-            return {
-                "data": {
-                    "plan_id": saved_id,
-                    "saved": True,
-                    "plan_name": plan.get("plan_name", "Unnamed Plan"),
-                }
-            }
-        except Exception as e:
-            return {"error": str(e)}
+        plan = plan_storage.load_plan(plan_id)
+        if not plan:
+            return "No active training plan."
+
+        return render_plan_context(plan)
 
     @mcp.tool()
     def list_training_plans() -> dict[str, Any]:
         """
-        List all saved training plans.
+        List all saved training plans with summary metadata.
 
         Returns:
-            Dictionary containing list of plan summaries with id, name, race date, is_active
+            Dict with plans list (id, name, race_date, goal_time, weeks count).
         """
-        try:
-            plans = plan_storage.list_plans()
-            return {"data": {"plans": plans, "count": len(plans)}}
-        except Exception as e:
-            return {"error": str(e)}
+        plans = plan_storage.list_plans()
+        if not plans:
+            return {"message": "No training plans found."}
+        return {"plans": plans}
 
     @mcp.tool()
-    def get_training_plan(plan_id: str) -> dict[str, Any]:
+    def get_training_plan(plan_id: str) -> str:
         """
-        Get a training plan by ID.
+        Get the full YAML content of a training plan.
+
+        Use this when you need to inspect or edit individual workouts.
+        For the compact overview, use get_plan_context() instead.
 
         Args:
-            plan_id: The plan ID to retrieve
+            plan_id: The plan ID.
 
         Returns:
-            Dictionary containing the full training plan data
+            Raw YAML content as text.
         """
-        try:
-            plan = plan_storage.get_plan(plan_id)
-            if plan is None:
-                return {"error": f"Plan not found: {plan_id}"}
-            return {"data": plan}
-        except Exception as e:
-            return {"error": str(e)}
+        raw = plan_storage.load_plan_raw(plan_id)
+        if raw is None:
+            return f"Plan '{plan_id}' not found."
+        return raw
 
     @mcp.tool()
-    def update_training_plan(plan_id: str, updates_json: str) -> dict[str, Any]:
+    def update_plan_run(
+        plan_id: str, week_number: int, day_of_week: str, updates_json: str
+    ) -> str:
         """
-        Update an existing training plan.
+        Modify a single workout within a week. Surgical edit — only the
+        specified fields are changed, everything else is preserved.
 
         Args:
-            plan_id: The plan ID to update
-            updates_json: JSON string containing the fields to update
+            plan_id: The plan ID.
+            week_number: Which week (1-indexed).
+            day_of_week: Day name (e.g. "Tuesday", "Sunday").
+            updates_json: JSON string of fields to update.
+                Example: {"type": "easy", "distance_km": 10, "description": "Recovery run"}
 
         Returns:
-            Dictionary with the updated plan data
+            Confirmation message.
         """
+        plan = plan_storage.load_plan(plan_id)
+        if plan is None:
+            return f"Plan '{plan_id}' not found."
+
         try:
             updates = json.loads(updates_json)
         except json.JSONDecodeError as e:
-            return {"error": f"Invalid JSON: {e}"}
+            return f"Invalid JSON: {e}"
 
-        try:
-            updated_plan = plan_storage.update_plan(plan_id, updates)
-            if updated_plan is None:
-                return {"error": f"Plan not found: {plan_id}"}
-            return {
-                "data": {
-                    "plan_id": plan_id,
-                    "updated": True,
-                    "plan": updated_plan,
-                }
-            }
-        except Exception as e:
-            return {"error": str(e)}
+        week = plan_storage.find_week(plan, week_number)
+        if week is None:
+            return f"Week {week_number} not found in plan."
 
-    @mcp.tool()
-    def delete_training_plan(plan_id: str) -> dict[str, Any]:
-        """
-        Delete a training plan.
+        run = plan_storage.find_run(week, day_of_week)
+        if run is None:
+            return f"No run on {day_of_week} in week {week_number}."
 
-        Args:
-            plan_id: The plan ID to delete
+        for key, value in updates.items():
+            run[key] = value
 
-        Returns:
-            Dictionary with deletion status
-        """
-        try:
-            deleted = plan_storage.delete_plan(plan_id)
-            if not deleted:
-                return {"error": f"Plan not found: {plan_id}"}
-            return {"data": {"plan_id": plan_id, "deleted": True}}
-        except Exception as e:
-            return {"error": str(e)}
+        plan_storage.save_plan(plan, plan_id)
+        return f"Updated {day_of_week} in week {week_number}: {updates}"
 
     @mcp.tool()
-    def analyze_plan_adherence(plan_id: str) -> dict[str, Any]:
+    def update_plan_week(
+        plan_id: str, week_number: int, updates_json: str
+    ) -> str:
         """
-        Analyze how well actual training matches the plan.
-
-        Compares planned workouts against actual runs from Strava to show
-        completion rate, missed workouts, and upcoming workouts.
+        Update week-level metadata (weekly_focus, total_planned_distance_km, etc.).
 
         Args:
-            plan_id: The plan ID to analyze
+            plan_id: The plan ID.
+            week_number: Which week.
+            updates_json: JSON string of week-level fields to update.
+                Example: {"weekly_focus": "Deload week", "total_planned_distance_km": 50}
 
         Returns:
-            Dictionary containing:
-            - completion_rate: Percentage of planned workouts completed
-            - completed_workouts: List of completed workouts with planned vs actual
-            - missed_workouts: List of missed workouts
-            - upcoming_workouts: List of upcoming workouts (next 7 days)
+            Confirmation message.
         """
-        try:
-            plan = plan_storage.get_plan(plan_id)
-            if plan is None:
-                return {"error": f"Plan not found: {plan_id}"}
-
-            # Load actual runs
-            actual_runs = run_storage.load_all_runs()
-
-            today = datetime.now().date()
-            completed_workouts: list[dict[str, Any]] = []
-            missed_workouts: list[dict[str, Any]] = []
-            upcoming_workouts: list[dict[str, Any]] = []
-
-            for week in plan.get("weeks", []):
-                week_num = week.get("week_number")
-
-                for planned_run in week.get("runs", []):
-                    if "date" not in planned_run:
-                        continue
-
-                    run_date_str = planned_run["date"]
-                    # Parse date
-                    if isinstance(run_date_str, str):
-                        run_date = datetime.fromisoformat(run_date_str).date()
-                    else:
-                        run_date = run_date_str
-
-                    # Skip non-running workouts for matching
-                    workout_type = planned_run.get("type", "")
-                    is_running = workout_type not in ["gym", "cross_training", "rest"]
-
-                    # Future workouts
-                    if run_date > today:
-                        days_away = (run_date - today).days
-                        if days_away <= 7:
-                            upcoming_workouts.append(
-                                {
-                                    "date": str(run_date),
-                                    "days_away": days_away,
-                                    "week": week_num,
-                                    **planned_run,
-                                }
-                            )
-                        continue
-
-                    # Past workouts - try to find matching actual run
-                    if not is_running:
-                        continue
-
-                    actual_run = _find_matching_run(run_date, actual_runs)
-
-                    if actual_run:
-                        completed_workouts.append(
-                            {
-                                "date": str(run_date),
-                                "week": week_num,
-                                "planned": planned_run,
-                                "actual": {
-                                    "name": actual_run.get("name", "Unnamed"),
-                                    "distance_km": round(
-                                        actual_run.get("distance_metres", 0) / 1000, 2
-                                    ),
-                                    "pace": _calculate_pace(actual_run),
-                                },
-                            }
-                        )
-                    else:
-                        missed_workouts.append(
-                            {
-                                "date": str(run_date),
-                                "week": week_num,
-                                **planned_run,
-                            }
-                        )
-
-            # Calculate completion rate
-            total_planned = len(completed_workouts) + len(missed_workouts)
-            completion_rate = (
-                round(len(completed_workouts) / total_planned * 100, 1)
-                if total_planned > 0
-                else 0
-            )
-
-            return {
-                "data": {
-                    "plan_id": plan_id,
-                    "plan_name": plan.get("plan_name", "Unnamed Plan"),
-                    "completion_rate": completion_rate,
-                    "workouts_completed": len(completed_workouts),
-                    "workouts_missed": len(missed_workouts),
-                    "completed_workouts": completed_workouts[-5:],  # Last 5
-                    "missed_workouts": missed_workouts[-10:],  # Last 10
-                    "upcoming_workouts": upcoming_workouts,
-                }
-            }
-        except Exception as e:
-            return {"error": str(e)}
-
-
-def _find_matching_run(
-    planned_date: Any, actual_runs: list[dict[str, Any]]
-) -> dict[str, Any] | None:
-    """Find an actual run that matches a planned date (within 1 day)."""
-    for run in actual_runs:
-        run_date_str = run.get("start_date", "")
-        if not run_date_str:
-            continue
+        plan = plan_storage.load_plan(plan_id)
+        if plan is None:
+            return f"Plan '{plan_id}' not found."
 
         try:
-            run_date = datetime.fromisoformat(run_date_str.replace("Z", "+00:00")).date()
-            if abs((run_date - planned_date).days) <= 1:
-                return run
-        except (ValueError, TypeError):
-            continue
+            updates = json.loads(updates_json)
+        except json.JSONDecodeError as e:
+            return f"Invalid JSON: {e}"
 
-    return None
+        week = plan_storage.find_week(plan, week_number)
+        if week is None:
+            return f"Week {week_number} not found in plan."
 
+        for key, value in updates.items():
+            if key == "runs":
+                return "Use update_plan_run, add_plan_run, or remove_plan_run to modify runs."
+            week[key] = value
 
-def _calculate_pace(run: dict[str, Any]) -> str:
-    """Calculate pace from run data."""
-    distance = run.get("distance_metres", 0)
-    time = run.get("moving_time_seconds", 0)
+        plan_storage.save_plan(plan, plan_id)
+        return f"Updated week {week_number}: {updates}"
 
-    if distance > 0 and time > 0:
-        speed_mps = distance / time
-        return format_pace(speed_mps)
+    @mcp.tool()
+    def add_plan_run(
+        plan_id: str, week_number: int, run_json: str
+    ) -> str:
+        """
+        Add a new workout to a week.
 
-    return "N/A"
+        Args:
+            plan_id: The plan ID.
+            week_number: Which week.
+            run_json: JSON string of the run to add.
+                Example: {"day_of_week": "Friday", "type": "easy", "distance_km": 8, "description": "Recovery"}
+
+        Returns:
+            Confirmation message.
+        """
+        plan = plan_storage.load_plan(plan_id)
+        if plan is None:
+            return f"Plan '{plan_id}' not found."
+
+        try:
+            run_data = json.loads(run_json)
+        except json.JSONDecodeError as e:
+            return f"Invalid JSON: {e}"
+
+        week = plan_storage.find_week(plan, week_number)
+        if week is None:
+            return f"Week {week_number} not found in plan."
+
+        day = run_data.get("day_of_week", "")
+        if not day:
+            return "Run must have a 'day_of_week' field."
+
+        # Check for existing run on that day
+        existing = plan_storage.find_run(week, day)
+        if existing is not None:
+            return f"A run already exists on {day} in week {week_number}. Use update_plan_run to modify it."
+
+        # Convert to CommentedMap for YAML compatibility
+        new_run = CommentedMap(run_data)
+
+        if "runs" not in week:
+            week["runs"] = CommentedSeq()
+        week["runs"].append(new_run)
+
+        # Sort runs by day of week
+        runs_list = list(week["runs"])
+        runs_list.sort(key=lambda r: DAY_ORDER.get(r.get("day_of_week", ""), 7))
+        week["runs"] = CommentedSeq(runs_list)
+
+        plan_storage.save_plan(plan, plan_id)
+        return f"Added {day} run to week {week_number}."
+
+    @mcp.tool()
+    def remove_plan_run(
+        plan_id: str, week_number: int, day_of_week: str
+    ) -> str:
+        """
+        Remove a workout from a week.
+
+        Args:
+            plan_id: The plan ID.
+            week_number: Which week.
+            day_of_week: Day name (e.g. "Thursday").
+
+        Returns:
+            Confirmation message.
+        """
+        plan = plan_storage.load_plan(plan_id)
+        if plan is None:
+            return f"Plan '{plan_id}' not found."
+
+        week = plan_storage.find_week(plan, week_number)
+        if week is None:
+            return f"Week {week_number} not found in plan."
+
+        runs = week.get("runs", [])
+        for i, run in enumerate(runs):
+            if run.get("day_of_week", "").lower() == day_of_week.lower():
+                del runs[i]
+                plan_storage.save_plan(plan, plan_id)
+                return f"Removed {day_of_week} run from week {week_number}."
+
+        return f"No run on {day_of_week} in week {week_number}."
+
+    @mcp.tool()
+    def add_plan_comment(
+        plan_id: str, week_number: int, comment: str
+    ) -> str:
+        """
+        Add a YAML comment to a week block. Documents plan adjustments
+        in the plan itself (e.g. "Deload week — groin recovery, cut volume 30%").
+
+        These comments persist through all future reads and exports.
+
+        Args:
+            plan_id: The plan ID.
+            week_number: Which week.
+            comment: The comment text (without # prefix).
+
+        Returns:
+            Confirmation message.
+        """
+        plan = plan_storage.load_plan(plan_id)
+        if plan is None:
+            return f"Plan '{plan_id}' not found."
+
+        week = plan_storage.find_week(plan, week_number)
+        if week is None:
+            return f"Week {week_number} not found in plan."
+
+        # Add comment before the week block using ruamel.yaml's comment API
+        weeks = plan.get("weeks", [])
+        for i, w in enumerate(weeks):
+            if w.get("week_number") == week_number:
+                weeks.yaml_set_comment_before_after_key(
+                    i, before=f" {comment}", indent=2
+                )
+                break
+
+        plan_storage.save_plan(plan, plan_id)
+        return f"Comment added to week {week_number}: # {comment}"

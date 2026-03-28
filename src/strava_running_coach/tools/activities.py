@@ -1,13 +1,18 @@
-"""MCP tools for Strava activity queries."""
+"""MCP tools for Strava activity queries and run annotations."""
 
 from datetime import datetime, timedelta
 from typing import Any
 
+from strava_running_coach.digestion import add_coach_note, needs_digest, build_digestion_prompt
+from strava_running_coach.storage.runs import RunStorage
 from strava_running_coach.utils.dates import parse_date
+from strava_running_coach.utils.formatting import format_pace, format_duration
 
 
 def register_activity_tools(mcp, strava_client):
     """Register activity-related MCP tools."""
+
+    run_storage = RunStorage()
 
     @mcp.tool()
     def get_activities(limit: int = 10) -> dict[str, Any]:
@@ -226,3 +231,149 @@ def register_activity_tools(mcp, strava_client):
             if "404" in error_msg:
                 return {"error": f"Activity {activity_id} not found"}
             return {"error": error_msg}
+
+    @mcp.tool()
+    def add_run_note(activity_id: int, note: str) -> str:
+        """
+        Add a coach note to a cached run. Notes persist across sessions.
+
+        Use this when the athlete shares context that changes interpretation
+        of a run (treadmill paces, watch glitch, how they felt, etc.).
+        Notes appear as 📝 lines in get_run_context() output.
+
+        Args:
+            activity_id: The Strava activity ID.
+            note: The note text to append.
+
+        Returns:
+            Confirmation message.
+        """
+        run = run_storage.load_run(activity_id)
+        if run is None:
+            return f"Run {activity_id} not found in cache."
+
+        add_coach_note(run, note)
+        run_storage.save_run(run, activity_id)
+        return f"Note added to run {activity_id}."
+
+    @mcp.tool()
+    def get_run_detail(activity_id: int) -> str:
+        """
+        Get a detailed view of a single run — full lap splits, HR, elevation,
+        digest, and coach notes. Use for post-race analysis, anomalies, or
+        when the athlete asks about specific splits.
+
+        Args:
+            activity_id: The Strava activity ID.
+
+        Returns:
+            Formatted run detail as text.
+        """
+        run = run_storage.load_run(activity_id)
+        if run is None:
+            return f"Run {activity_id} not found in cache."
+
+        # Header
+        name = run.get("name", "Unknown")
+        date = run.get("start_date", "")[:10]
+        dist_km = run.get("distance_metres", 0) / 1000
+        moving_time = run.get("moving_time_seconds", 0)
+        avg_speed = run.get("average_speed_mps", 0)
+        pace = format_pace(avg_speed) if avg_speed > 0 else "N/A"
+        elev = run.get("total_elevation_gain_metres", 0)
+        duration = format_duration(moving_time)
+
+        lines = [
+            f"=== {name} — {date} ===",
+            f"{dist_km:.1f}km | {duration} | {pace}/km | +{elev:.0f}m",
+        ]
+
+        # Digest
+        digest = run.get("run_digest")
+        if digest:
+            lines.append(f"Digest: {digest}")
+
+        # Coach notes
+        notes = run.get("coach_notes", [])
+        for note in notes:
+            lines.append(f"📝 {note}")
+
+        # Lap splits
+        laps = run.get("laps", [])
+        if laps:
+            lines.append("")
+            lines.append("Lap splits:")
+            for i, lap in enumerate(laps, 1):
+                lap_dist = lap.get("distance", 0) / 1000
+                lap_speed = lap.get("average_speed", 0)
+                lap_pace = format_pace(lap_speed) if lap_speed > 0 else "N/A"
+                lap_hr = lap.get("average_heartrate")
+                lap_max_hr = lap.get("max_heartrate")
+                lap_elev = lap.get("total_elevation_gain", 0)
+                lap_time = format_duration(lap.get("moving_time", 0))
+
+                hr_str = ""
+                if lap_hr:
+                    hr_str = f" HR {lap_hr:.0f}"
+                    if lap_max_hr:
+                        hr_str += f"/{lap_max_hr:.0f}"
+
+                lines.append(
+                    f"  {i:2d}. {lap_dist:.2f}km  {lap_pace}/km  {lap_time}{hr_str}  +{lap_elev:.0f}m"
+                )
+
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def get_pending_digests() -> dict[str, Any]:
+        """
+        Get runs that need LLM digestion, with pre-built prompts.
+
+        Returns a list of items, each with activity_id, name, date, and the
+        digestion prompt. The host should process each item — ideally by
+        spawning parallel Haiku subagents — and save results via
+        save_run_digest(activity_id, digest).
+
+        Returns:
+            Dict with "pending" list (each item has activity_id, name, date,
+            prompt) or "message" if nothing is pending.
+        """
+        runs = run_storage.load_all_runs()
+        pending = []
+        for run in runs:
+            if needs_digest(run):
+                pending.append({
+                    "activity_id": run.get("id", 0),
+                    "name": run.get("name", "Unknown"),
+                    "date": run.get("start_date", "")[:10],
+                    "prompt": build_digestion_prompt(run),
+                })
+
+        if not pending:
+            return {"message": "All qualifying runs already have digests."}
+
+        return {"pending": pending}
+
+    @mcp.tool()
+    def save_run_digest(activity_id: int, digest: str) -> str:
+        """
+        Save a digest for a run (generated by LLM or host).
+
+        Called after processing a digestion prompt from get_pending_digests().
+        The digest should be a single compact line with segments separated
+        by | (e.g. "WU 2km @5:00 | 10×1km @3:45 HR 165→185 | CD 2km | +110m").
+
+        Args:
+            activity_id: The Strava activity ID.
+            digest: The digest string.
+
+        Returns:
+            Confirmation message.
+        """
+        run = run_storage.load_run(activity_id)
+        if run is None:
+            return f"Run {activity_id} not found in cache."
+
+        run["run_digest"] = digest.strip()
+        run_storage.save_run(run, activity_id)
+        return f"Digest saved for run {activity_id}."

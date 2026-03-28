@@ -52,13 +52,15 @@ STRAVA_REFRESH_TOKEN=your_refresh_token
 
 ### 1. Register the MCP Server
 
-Add the Strava MCP server to your Claude configuration file:
+**For Claude Code (recommended):**
 
-**For Claude Desktop:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+```bash
+claude mcp add strava -- uv run --directory /absolute/path/to/strava-running-coach-mcp strava-running-coach
+```
 
-**For Claude Code:** Edit `~/.claude/mcp_config.json`
+Replace `/absolute/path/to/strava-running-coach-mcp` with the full path to your cloned repository. The `.env` file in the project root is loaded automatically.
 
-Add the following configuration:
+**For Claude Desktop:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -81,23 +83,19 @@ Add the following configuration:
 }
 ```
 
-**Important:** Replace `/absolute/path/to/strava-running-coach-mcp` with the full path to your cloned repository.
-
 After adding the configuration, restart Claude Desktop or Claude Code to load the MCP server.
 
-### 2. Install the Running Coach Skill (Optional)
+### 2. Install the Running Coach Skill
 
-The `/running-coach` skill automates your coaching check-in workflow. To install it:
+The `/running-coach-v2` skill automates your coaching check-in workflow (load context, digest runs, post feedback, open conversation). To install it:
 
 ```bash
-# Create the skills directory if it doesn't exist
-mkdir -p ~/.claude/skills
-
-# Copy the skill to your personal skills directory
-cp -r skills/running-coach ~/.claude/skills/
+# Copy the skill into the project's Claude Code skills directory
+mkdir -p .claude/skills/running-coach-v2
+cp skills/running-coach-v2/SKILL.md .claude/skills/running-coach-v2/SKILL.md
 ```
 
-**Usage:** Open Claude Code and run `/running-coach`
+**Usage:** Open Claude Code in the project directory and run `/running-coach-v2`
 
 ### CLI Commands
 
