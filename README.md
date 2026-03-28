@@ -115,19 +115,52 @@ uv run strava-generate-calendar [plan_id]
 
 ## MCP Tools
 
+### Session Context
+
 | Tool | Description |
 |------|-------------|
-| `get_activities` | Get recent activities from Strava |
-| `get_training_report` | Comprehensive training summary with weekly breakdowns |
-| `save_training_plan` | Save a training plan (JSON format) |
+| `get_run_context` | Sync new activities from Strava and return tiered training overview |
+| `get_plan_context` | Active training plan as compact text with current week highlighted |
+| `get_coaching_personas` | List available coach persona names |
+| `get_coaching_persona` | Load a persona's full definition and coaching guidelines |
+
+### Coach Memory
+
+| Tool | Description |
+|------|-------------|
+| `read_coach_memory` | Load full COACH_MEMORY.md (athlete knowledge, flags, patterns) |
+| `update_coach_memory` | Rewrite a specific section in-place (athlete, goals, prs, etc.) |
+| `get_session_logs` | Load recent session summaries (auto-distills older logs) |
+| `save_session_log` | Write session summary at end of conversation |
+| `get_archived_session_log` | Retrieve full session log from archive by date |
+
+### Activities & Runs
+
+| Tool | Description |
+|------|-------------|
+| `get_activities` | Get recent activities from Strava (paginated) |
+| `get_activities_by_date_range` | Get activities within a date range |
+| `get_activity_by_id` | Get a single activity by Strava ID |
+| `get_recent_activities` | Get activities from the last N days |
+| `get_activity_streams` | Get detailed data streams (pace, HR, altitude, etc.) |
+| `get_activity_description` | Read an activity's description field |
+| `get_run_detail` | Formatted run summary with laps, HR, pace, elevation |
+| `get_pending_digests` | Get runs needing LLM digestion with pre-built prompts |
+| `save_run_digest` | Save a compact digest line for a run |
+| `add_coaching_feedback` | Post coaching feedback to a Strava activity description |
+| `add_run_note` | Add a coach note to a run (stored locally) |
+
+### Training Plans
+
+| Tool | Description |
+|------|-------------|
 | `list_training_plans` | List all saved training plans |
-| `get_training_plan` | Retrieve a specific plan |
-| `analyze_plan_adherence` | Compare planned vs actual workouts |
-| `get_coaching_personas` | List available coaching personas |
-| `get_coaching_context` | Load coach persona and athlete profile |
-| `save_coaching_note` | Persist coaching insights |
-| `update_athlete_profile` | Update athlete preferences and goals |
-| `add_coaching_feedback` | Post coaching feedback to Strava activity descriptions |
+| `get_training_plan` | Retrieve full plan YAML by ID |
+| `update_plan_run` | Modify a single workout in a plan |
+| `update_plan_week` | Update week-level metadata (volume target, notes) |
+| `add_plan_run` | Add a new workout to a plan week |
+| `remove_plan_run` | Remove a workout from a plan week |
+| `add_plan_comment` | Add a comment to a plan week (document changes) |
 
 ## Coaching Workflows
 
