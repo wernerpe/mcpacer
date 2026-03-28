@@ -164,26 +164,46 @@ uv run strava-generate-calendar [plan_id]
 
 ## Coaching Workflows
 
-### Starting a Coaching Session
+### Starting a Session
 
-Ask Claude to load the coaching context:
-> "Let's do a coaching check-in. Load my coaching context and review my recent training."
+Run `/running-coach-v2` in Claude Code. The skill handles everything automatically:
+1. Loads coach memory, run context, plan context, and session logs
+2. Auto-loads your preferred persona (stored in coach memory)
+3. Digests any new runs
+4. Posts feedback on recent runs
+5. Opens the conversation
+
+No prompting needed — just run the slash command.
+
+### What a Session Looks Like
+
+The coach reviews your training, posts feedback on your Strava runs, and opens with what matters:
+
+> Seven days out and you ran your "easy" 8km at 5:03/km with your HR at 146. That's not easy, that's a moderate tempo for someone who's supposed to be tapering. Friday's 11km with Adam at 5:22 — THAT was easy. See the difference?
+>
+> How's that groin feeling? And are we sticking to the dress rehearsal plan tomorrow or are you going to "freestyle" it again?
+
+### Feedback on Strava
+
+The coach posts directly to your Strava activity descriptions. Feedback is concise (2-3 sentences), references the plan, and doesn't hold back:
+
+> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn, stop trying to add more hay. Stay hard, but stay smart.
+
+### Mid-Session
+
+- **Plan adjustments:** "I need to move Wednesday's workout to Tuesday" — the coach uses surgical plan tools, never rewrites the whole plan
+- **Run context:** "That Thursday run was on a treadmill" — coach saves a note so future sessions know the GPS data is off
+- **Memory updates:** New injury, goal change, or pattern spotted — goes into coach memory immediately, not at session end
 
 ### Creating a Training Plan
 
-> "I have a marathon on April 4th targeting sub-3 hours. Create a 16-week training plan based on my recent fitness."
+> "I have a marathon on April 4th targeting sub-3 hours. Build me a plan based on my recent fitness."
 
-### Weekly Check-ins
+### Customizing Your Coach
 
-> "How did my training go this week? What should I focus on?"
+Personas live in `coaching_data/personas/` as markdown files. Create a new `.md` file to add your own. The persona preference is stored in coach memory and auto-loaded each session — no selection prompt needed.
 
-### Adjusting Plans
-
-> "I'm feeling some knee pain. Can you adjust my plan for this week?"
-
-## Customizing Your Coach
-
-Coach personas are stored in `coaching_data/personas/`. You can customize existing personas or create new ones by adding `.md` files to this directory.
+Available personas: `coach` (balanced), `david` (Goggins-style tough love), `roland`, `kim`, `hartmann`
 
 ## Memory & Context Architecture
 
