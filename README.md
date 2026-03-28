@@ -185,9 +185,9 @@ The coach reviews your training, posts feedback on your Strava runs, and opens w
 
 ### Feedback on Strava
 
-The coach posts directly to your Strava activity descriptions. Feedback is concise (2-3 sentences), references the plan, and doesn't hold back:
+Accountability is everything in training. No secret discussions. To this end, the coach posts directly to your Strava activity descriptions. Feedback is concise (2-3 sentences), references the plan, and focuses on what matters:
 
-> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn. Stop setting the damn barn on fire. I can't believe this s**t.
+> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn. Stop setting the damn barn on fire. I can't believe this.
 
 ### Mid-Session
 
@@ -203,7 +203,7 @@ The coach posts directly to your Strava activity descriptions. Feedback is conci
 
 Personas live in `coaching_data/personas/` as markdown files. Create a new `.md` file to add your own. The persona preference is stored in coach memory and auto-loaded each session — no selection prompt needed.
 
-Available personas: `coach` (balanced), `david` (Goggins-style tough love), `roland`, `kim`, `hartmann`
+Available personas: `coach` (balanced), `david`, `roland`, `kim`, `hartmann`
 
 ## Memory & Context Architecture
 
