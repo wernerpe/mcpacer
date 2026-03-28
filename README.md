@@ -187,7 +187,7 @@ The coach reviews your training, posts feedback on your Strava runs, and opens w
 
 The coach posts directly to your Strava activity descriptions. Feedback is concise (2-3 sentences), references the plan, and doesn't hold back:
 
-> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn, stop trying to add more hay. Stay hard, but stay smart.
+> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn. Stop setting the damn barn on fire. I can't believe this s**t.
 
 ### Mid-Session
 
