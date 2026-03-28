@@ -14,7 +14,7 @@ Make these four calls simultaneously — they are independent:
 - **`mcp__strava__read_coach_memory`** — returns `COACH_MEMORY.md`, the long-term athlete knowledge (goals, PRs, injuries, patterns). This is your memory of the athlete.
 - **`mcp__strava__get_run_context`** — syncs new activities from Strava and returns a tiered training snapshot: one-liners for older weeks, per-run detail for recent weeks. This is the athlete's actual training.
 - **`mcp__strava__get_plan_context`** — returns the active training plan as compact text (or "No active training plan"). This is what the athlete is supposed to be doing.
-- **`mcp__strava__get_session_logs`** — returns the most recent daily session logs (previous coaching conversations — what was discussed, flags raised, decisions made). This is your conversation continuity.
+- **`mcp__strava__get_session_logs`** — returns the 3 most recent full session logs. Older sessions are automatically compressed into one-liners in the **Session History** section of coach memory. Between the two, you have full detail for the last few days and a compressed thread for the past month. If a one-liner isn't enough context, call `mcp__strava__get_archived_session_log(date)` to retrieve the full original log.
 
 ## 2. Load Coaching Persona
 

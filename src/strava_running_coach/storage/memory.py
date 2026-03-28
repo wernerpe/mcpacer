@@ -15,7 +15,10 @@ MEMORY_SECTIONS = {
     "active_flags": "Active Flags",
     "training_context": "Training Context",
     "patterns": "Patterns & Insights",
+    "session_history": "Session History",
 }
+
+SESSION_HISTORY_MAX_LINES = 30
 
 
 class MemoryStorage(BaseStorage):
@@ -96,10 +99,120 @@ class MemoryStorage(BaseStorage):
         self._save_text(self.memory_file, new_text)
         return f"Updated '{header}' section in coach memory."
 
+    # ── Session Log Distillation ───────────────────────────────────
+
+    def _distill_log_to_oneliner(self, log_path: Path) -> str | None:
+        """Extract a one-liner from a session log file.
+
+        Takes the first non-header, non-empty line and truncates to 120 chars.
+        Returns '- YYYY-MM-DD: <line>' or None if the file is empty/malformed.
+        """
+        content = self._load_text(log_path)
+        if not content:
+            return None
+
+        date_str = log_path.stem  # YYYY-MM-DD
+        for line in content.split("\n"):
+            line = line.strip()
+            if not line or line.startswith("##"):
+                continue
+            if len(line) > 120:
+                line = line[:117] + "..."
+            return f"- {date_str}: {line}"
+        return None
+
+    def _distill_old_logs(self, keep_recent: int = 3) -> None:
+        """Distill older session logs into one-liners in Session History.
+
+        Keeps the most recent `keep_recent` logs as full files.
+        Older logs are compressed into Session History in COACH_MEMORY.md
+        and moved to the archive directory.
+        """
+        log_files = sorted(self.logs_dir.glob("*.md"), reverse=True)
+        if len(log_files) <= keep_recent:
+            return
+
+        recent = log_files[:keep_recent]
+        old = log_files[keep_recent:]
+
+        # Generate one-liners for old logs
+        new_oneliners = []
+        files_to_archive = []
+        for log_path in old:
+            oneliner = self._distill_log_to_oneliner(log_path)
+            if oneliner:
+                new_oneliners.append(oneliner)
+                files_to_archive.append(log_path)
+
+        if not new_oneliners:
+            return
+
+        # Read existing Session History from coach memory
+        full_text = self._load_text(self.memory_file) or ""
+        existing_lines = []
+        pattern = re.compile(
+            r"^## Session History\s*\n(.*?)(?=^## |\Z)",
+            re.MULTILINE | re.DOTALL,
+        )
+        match = pattern.search(full_text)
+        if match:
+            for line in match.group(1).strip().split("\n"):
+                line = line.strip()
+                if line.startswith("- "):
+                    existing_lines.append(line)
+
+        # Deduplicate by date prefix
+        existing_dates = {line.split(":")[0] for line in existing_lines}
+        for oneliner in new_oneliners:
+            if oneliner.split(":")[0] not in existing_dates:
+                existing_lines.append(oneliner)
+
+        # Sort by date descending, cap at max
+        existing_lines.sort(key=lambda l: l[2:12], reverse=True)
+        existing_lines = existing_lines[:SESSION_HISTORY_MAX_LINES]
+
+        # Write back to coach memory
+        self.update_section("session_history", "\n".join(existing_lines))
+
+        # Archive old log files
+        archive_dir = self.logs_dir / "archive"
+        archive_dir.mkdir(exist_ok=True)
+        for log_path in files_to_archive:
+            log_path.rename(archive_dir / log_path.name)
+
+    # ── Archive Retrieval ────────────────────────────────────────────
+
+    def get_archived_session_log(self, date_str: str) -> str:
+        """Retrieve a full session log from the archive by date.
+
+        Args:
+            date_str: Date in YYYY-MM-DD format.
+
+        Returns:
+            The full session log content, or a message if not found.
+        """
+        # Check active logs first, then archive
+        active_path = self.logs_dir / f"{date_str}.md"
+        if active_path.exists():
+            content = self._load_text(active_path)
+            if content:
+                return content
+
+        archive_path = self.logs_dir / "archive" / f"{date_str}.md"
+        if archive_path.exists():
+            content = self._load_text(archive_path)
+            if content:
+                return content
+
+        return f"No session log found for {date_str}."
+
     # ── Session Logs ─────────────────────────────────────────────────
 
     def get_session_logs(self, limit: int = 3) -> str:
         """Read the most recent daily session logs.
+
+        Automatically distills older logs into Session History before
+        returning the recent ones.
 
         Args:
             limit: Maximum number of log files to return (default 3).
@@ -107,6 +220,7 @@ class MemoryStorage(BaseStorage):
         Returns:
             Concatenated session log content, or a message if none exist.
         """
+        self._distill_old_logs(keep_recent=limit)
         log_files = sorted(self.logs_dir.glob("*.md"), reverse=True)
 
         if not log_files:

@@ -72,6 +72,10 @@ def register_memory_tools(mcp):
         The summary should be 3-5 lines covering: what was discussed, flags
         raised, decisions made, and any plan adjustments.
 
+        IMPORTANT: The first line should be a standalone sentence capturing
+        the session's most important takeaway, as it will be used as a
+        one-liner in compressed session history.
+
         Args:
             summary: The session summary text (3-5 lines).
             coach_name: Name of the coach persona used in this session.
@@ -80,3 +84,21 @@ def register_memory_tools(mcp):
             Confirmation message.
         """
         return memory_storage.save_session_log(summary, coach_name)
+
+    @mcp.tool()
+    def get_archived_session_log(session_date: str) -> str:
+        """
+        Retrieve a full session log from the archive by date.
+
+        Older session logs are automatically compressed into one-liners in
+        the Session History section of coach memory. Use this tool when a
+        one-liner doesn't provide enough context and you need the full
+        original session summary.
+
+        Args:
+            session_date: Date of the session in YYYY-MM-DD format.
+
+        Returns:
+            The full session log text, or a message if not found.
+        """
+        return memory_storage.get_archived_session_log(session_date)
