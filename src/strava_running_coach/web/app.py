@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
             else:
                 quiet_count = 0
                 last_size = current_size
-        pty_manager.inject_command("/running-coach-v2\n")
+        pty_manager.inject_command("/running-coach-v2\r")
 
     asyncio.create_task(inject_skill())
 
