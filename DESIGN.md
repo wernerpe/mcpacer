@@ -26,11 +26,11 @@ Make the training plan useful outside the coaching session.
 2. **Calendar export** — `strava-coach export-calendar [plan_id]` → `.ics` file for Google/Apple Calendar
 3. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, `example.config.toml`
 
-### Phase 3 — TUI + Onboarding
+### Phase 3 — Web App + Onboarding
 
 Build the standalone experience on top of the fixed backend.
 
-1. **TUI** — streaming terminal chat using Rich + prompt_toolkit; MCP client connects to existing server via stdio
+1. **Web app** — SvelteKit + Tailwind (dark theme), FastAPI backend, embedded Claude Code terminal
 2. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
 3. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
 
@@ -85,43 +85,133 @@ Config lives in `~/.strava-coach/` (never in the repo). Repo ships `example.conf
 
 ---
 
-## TUI
+## Web App
 
-Built with **Textual** (Python TUI framework). Layout:
+SvelteKit + Tailwind CSS (dark theme) frontend, FastAPI backend, with Claude Code embedded via xterm.js. Single command launches the server and opens the browser.
 
-```
-┌─────────────────────────────────────────────────┐
-│  🏃 Running Coach — Coach Roland                │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  Coach: Hey Pete. Solid week — 35km long run    │
-│  yesterday, HR controlled through 30km. Left    │
-│  knee worth watching. What's on your mind?      │
-│                                                  │
-│  Pete: Thinking about adding a second tempo...  │
-│                                                  │
-├─────────────────────────────────────────────────┤
-│  > _                                            │
-└─────────────────────────────────────────────────┘
+```bash
+strava-coach        # starts backend, opens browser to localhost:5173
 ```
 
-- Scrollable chat history pane
-- Persistent input box at bottom
-- Coach name shown in header (updates on persona selection)
+### Tech Stack
 
-### Startup Sequence (Every Session)
+| Layer | Tech | Purpose |
+|-------|------|---------|
+| Frontend | SvelteKit + Tailwind CSS | Dark-themed UI with reactive panels |
+| Terminal | xterm.js | Embedded Claude Code session |
+| Maps | Leaflet + OpenStreetMap tiles | GPS track visualization |
+| Charts | Chart.js or uPlot | HR, pace, elevation over time |
+| Backend | FastAPI (Python) | Serves data, spawns PTY, WebSocket bridge |
+| PTY bridge | WebSocket | Connects xterm.js ↔ Claude Code process |
+| Data | File watchers | Push updates when coach modifies plan/memory |
 
-1. **Select persona** — small menu presented before chat opens:
-   ```
-   Select coach: [1] Coach (default)  [2] David  [3] Roland  [4] Kim  [5] Hartmann
-   ```
-2. **Refresh run data** — calls `get_run_context()` which syncs new activities and builds the tiered context snapshot (see Run Context Engine below)
-3. **Build system prompt** (not shown to user):
-   - Coaching persona
-   - `COACH_MEMORY.md`
-   - Run context snapshot from step 2
-   - Recent session logs (since last session, capped at 5)
-4. **Coach opens** with a brief acknowledgment of what happened since last session, then hands it to the user
+### Layout
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ ┌─ Plan Overview ──────────┐  ┌─ Run Detail ───────────────────┐│
+│ │                          │  │                                ││
+│ │ W6  ████████░░ 72/75km   │  │  ┌─ GPS Track (Leaflet) ────┐ ││
+│ │ W7  ██████░░░░ 68/80km   │  │  │                           │ ││
+│ │ W8→ ███░░░░░░░ 44/70km   │  │  │    route polyline on      │ ││
+│ │ W9  ░░░░░░░░░░  0/60km   │  │  │    dark map tiles         │ ││
+│ │                          │  │  │                           │ ││
+│ │ [click a week ↓]        │  │  └───────────────────────────┘ ││
+│ ├─ Week Detail ────────────┤  │                                ││
+│ │ W8 Taper — 44/70km      │  │  Tue Mar 24 — 12.9km           ││
+│ │                          │  │  4:20/km | HR 160/182 | +23m  ││
+│ │ Mon  5.0km easy      ✓  │  │                                ││
+│ │ Tue  12.9km workout  ✓← │  │  ┌─ Laps ──────────────────┐  ││
+│ │ Wed  rest                │  │  │ WU  2.8km  4:44  HR 140 │  ││
+│ │ Thu  8.1km easy      ✓  │  │  │ R1  1.0km  3:35  HR 168 │  ││
+│ │ Fri  11.0km easy     ✓  │  │  │ R2  1.0km  3:38  HR 170 │  ││
+│ │ Sat  6.8km easy      ✓  │  │  │ ...                      │  ││
+│ │ Sun  22km dress          │  │  └──────────────────────────┘  ││
+│ │              [Copy week] │  │                                ││
+│ └──────────────────────────┘  │  ┌─ HR / Pace Chart ────────┐  ││
+│                               │  │  ♥ ╱╲  ╱╲╱╲              │  ││
+│                               │  │   ╱  ╲╱      ╲           │  ││
+│                               │  └──────────────────────────┘  ││
+│                               └────────────────────────────────┘│
+│ ┌─ Coach Chat (xterm.js) ─────────────────────────────────────┐ │
+│ │ David: That 6x1km at 3:39 in taper week... the hay is in   │ │
+│ │ the barn. Stop setting the damn barn on fire.               │ │
+│ │ > _                                                         │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Panels
+
+**Plan Overview (top-left)**
+- Volume bars for each week: gray = planned, colored = actual
+- Current week marked with arrow indicator
+- Click any week → loads it in Week Detail below
+- Shows whole plan at a glance (scrollable for long plans)
+
+**Week Detail (bottom-left)**
+- Day-by-day breakdown for the selected week
+- Plan prescription on the left, completion status on the right
+- Completed runs are clickable → loads Run Detail on the right
+- Planned but not-yet-completed runs show the prescription
+- Copy-to-clipboard button: exports the week as a clean text table
+
+**Run Detail (right panel)**
+- Shown when a completed run is clicked in Week Detail
+- **GPS map** — Leaflet with dark map tiles (CartoDB Dark Matter or Mapbox Dark), route as a colored polyline (color by pace or HR)
+- **Summary stats** — distance, avg pace, avg/max HR, elevation, duration
+- **Lap table** — per-lap breakdown with pace, HR, elevation
+- **Charts** — HR and pace over distance/time, elevation profile
+- Empty state when no run is selected: shows the plan week overview or a motivational quote from the coach
+
+**Coach Chat (bottom strip)**
+- xterm.js terminal running Claude Code
+- Auto-launches `/running-coach-v2` on session start
+- Resizable — can drag the divider up for more chat space
+- Coach persona shown in the prompt/header area
+
+### Architecture
+
+```
+Browser (localhost:5173)
+├── SvelteKit app (dark Tailwind theme)
+│   ├── PlanOverview.svelte    — volume bars, week selector
+│   ├── WeekDetail.svelte      — run list, copy button
+│   ├── RunDetail.svelte       — map, laps, charts
+│   └── CoachChat.svelte       — xterm.js terminal component
+│
+│   WebSocket ──→ FastAPI backend (localhost:8000)
+│                 ├── /ws/terminal     — PTY bridge for Claude Code
+│                 ├── /api/plan        — current plan data (from YAML)
+│                 ├── /api/weeks       — week summaries with volume
+│                 ├── /api/runs/{id}   — run detail + streams
+│                 └── /api/memory      — coach memory (for display)
+│
+│                 File watchers → push updates via WebSocket
+│                 when plan/memory files change mid-session
+```
+
+The backend reads the same files the MCP tools use (plan YAML, run cache, coach memory). It does NOT duplicate the MCP server — it's a read-only view layer. All writes go through Claude Code → MCP server.
+
+### Dark Theme
+
+Tailwind dark theme throughout. Key design tokens:
+- Background: `slate-900` / `slate-950`
+- Cards/panels: `slate-800` with `slate-700` borders
+- Text: `slate-100` primary, `slate-400` secondary
+- Accent: a single brand color for volume bars, active states, route polyline (e.g. `emerald-400` or `sky-400`)
+- Map tiles: CartoDB Dark Matter (free, no API key) or Mapbox Dark
+- Terminal: matches the dark theme naturally (xterm.js dark config)
+
+### Startup Sequence
+
+1. `strava-coach` command starts FastAPI backend
+2. Backend spawns Claude Code in a PTY
+3. Opens browser to `localhost:5173`
+4. Frontend connects WebSocket to backend (terminal + data updates)
+5. Claude Code auto-runs `/running-coach-v2` skill
+6. Panels populate from backend API (plan, weeks, runs)
+7. File watchers detect changes from the coaching session and push updates
 
 Each session is **fresh** (no conversation history carried over). Memory files provide continuity.
 
