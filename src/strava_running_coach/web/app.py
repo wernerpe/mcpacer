@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from strava_running_coach.web.api import router as api_router
 from strava_running_coach.web.pty_manager import PtyManager
 
 pty_manager = PtyManager()
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI):
                 last_size = current_size
         pty_manager.inject_command("/running-coach-v2\r")
 
-    asyncio.create_task(inject_skill())
+    # asyncio.create_task(inject_skill())  # disabled during dev to save tokens
 
     yield
 
@@ -45,6 +46,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,

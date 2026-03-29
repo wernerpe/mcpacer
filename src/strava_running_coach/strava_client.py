@@ -214,6 +214,11 @@ class StravaClient:
             if old_key in activity:
                 filtered_activity[new_key] = activity[old_key]
 
+        # Extract nested polyline from map object
+        map_data = activity.get("map", {})
+        if map_data.get("summary_polyline"):
+            filtered_activity["summary_polyline"] = map_data["summary_polyline"]
+
         return filtered_activity
 
     def _filter_activities(self, activities: list[dict[str, Any]]) -> list[dict[str, Any]]:
