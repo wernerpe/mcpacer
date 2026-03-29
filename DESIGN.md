@@ -26,13 +26,49 @@ Make the training plan useful outside the coaching session.
 2. **Calendar export** — `strava-coach export-calendar [plan_id]` → `.ics` file for Google/Apple Calendar
 3. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, `example.config.toml`
 
-### Phase 3 — Web App + Onboarding
+### Phase 3a — Terminal in a Browser
 
-Build the standalone experience on top of the fixed backend.
+Minimum viable web app. Get Claude Code running in a dark-themed browser window.
 
-1. **Web app** — SvelteKit + Tailwind (dark theme), FastAPI backend, embedded Claude Code terminal
-2. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
-3. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
+1. **FastAPI skeleton** — PTY spawn for Claude Code, WebSocket bridge
+2. **SvelteKit scaffold** — Tailwind dark theme, single-page layout
+3. **xterm.js terminal** — full-screen, connected to backend via WebSocket
+4. **`strava-coach` command** — starts backend + opens browser to `localhost:5173`
+5. **Auto-run** — `/running-coach-v2` skill launches on connect
+
+**Done when:** Full coaching session works in the browser. No panels yet — just a nice dark terminal.
+
+### Phase 3b — Plan + Week Panels
+
+Add the left sidebar with plan and week views.
+
+1. **`/api/plan` endpoint** — reads plan YAML, returns structured JSON
+2. **`/api/weeks` endpoint** — weekly volume (planned vs actual)
+3. **PlanOverview component** — volume bars (gray=plan, colored=actual), click to select week
+4. **WeekDetail component** — day-by-day list, completion status, copy-to-clipboard
+5. **Layout split** — left panels + terminal on the bottom
+
+**Done when:** Plan and weekly progress visible alongside coach chat. Clicking weeks updates detail panel.
+
+### Phase 3c — Run Detail
+
+Rich right panel with maps, charts, and lap data.
+
+1. **`/api/runs/{id}` endpoint** — run detail + activity streams (latlng, HR, pace, altitude)
+2. **RunDetail component** — Leaflet map (dark tiles, route polyline), summary stats, lap table, HR/pace chart
+3. **Click-through** — completed run in WeekDetail → loads RunDetail on the right
+4. **Four-panel layout** complete: plan overview, week detail, run detail, coach chat
+
+**Done when:** Full layout working. Click plan → week → run with GPS map and charts.
+
+### Phase 3d — Polish + Live Updates
+
+1. **File watchers** — push plan/memory changes to frontend when coach modifies them mid-session
+2. **Resizable dividers** — especially terminal height
+3. **Route polyline** colored by pace or HR zones
+4. **Elevation profile** chart
+5. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
+6. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
 
 ---
 
