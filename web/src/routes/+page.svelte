@@ -18,6 +18,50 @@
 	let runData: any = $state(null);
 	let runLoading: boolean = $state(false);
 
+	// Panel sizes (pixels for sidebar/terminal, fraction for sidebar split)
+	let sidebarWidth = $state(384); // w-96 = 24rem = 384px
+	let terminalHeight = $state(320); // h-80 = 20rem = 320px
+	let sidebarSplit = $state(0.45); // fraction of sidebar height for plan overview
+
+	// Drag state
+	let dragging: 'sidebar' | 'terminal' | 'split' | null = $state(null);
+
+	function onPointerDown(target: 'sidebar' | 'terminal' | 'split') {
+		return (e: PointerEvent) => {
+			e.preventDefault();
+			dragging = target;
+			(e.target as HTMLElement).setPointerCapture(e.pointerId);
+		};
+	}
+
+	function onPointerMove(e: PointerEvent) {
+		if (!dragging) return;
+
+		if (dragging === 'sidebar') {
+			sidebarWidth = Math.max(240, Math.min(e.clientX, window.innerWidth - 300));
+		} else if (dragging === 'terminal') {
+			const fromBottom = window.innerHeight - e.clientY;
+			terminalHeight = Math.max(120, Math.min(fromBottom, window.innerHeight - 200));
+			// Refit terminal after resize
+			requestAnimationFrame(() => fitAddon?.fit());
+		} else if (dragging === 'split') {
+			const sidebar = document.getElementById('sidebar');
+			if (sidebar) {
+				const rect = sidebar.getBoundingClientRect();
+				const relY = e.clientY - rect.top;
+				sidebarSplit = Math.max(0.2, Math.min(relY / rect.height, 0.8));
+			}
+		}
+	}
+
+	function onPointerUp() {
+		if (dragging === 'terminal' || dragging === 'sidebar') {
+			// Refit terminal when done dragging
+			requestAnimationFrame(() => fitAddon?.fit());
+		}
+		dragging = null;
+	}
+
 	async function loadWeeks() {
 		const res = await fetch('/api/weeks');
 		weeks = await res.json();
@@ -131,19 +175,44 @@
 	});
 </script>
 
-<div class="h-screen w-screen flex flex-col bg-gray-950">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="h-screen w-screen flex flex-col bg-gray-950"
+	class:select-none={!!dragging}
+	onpointermove={onPointerMove}
+	onpointerup={onPointerUp}
+>
 	<!-- Top: panels -->
-	<div class="flex flex-1 min-h-0 border-b border-slate-800">
+	<div class="flex flex-1 min-h-0">
 		<!-- Left sidebar: plan + week -->
-		<div class="w-96 flex flex-col border-r border-slate-800 shrink-0">
-			<!-- Plan overview (top half) -->
-			<div class="flex-1 min-h-0 overflow-y-auto border-b border-slate-800">
+		<div id="sidebar" class="flex flex-col shrink-0" style="width: {sidebarWidth}px">
+			<!-- Plan overview -->
+			<div class="min-h-0 overflow-y-auto" style="height: {sidebarSplit * 100}%">
 				<PlanOverview {weeks} {selectedWeek} onSelectWeek={selectWeek} />
 			</div>
-			<!-- Week detail (bottom half) -->
+
+			<!-- Horizontal drag handle: plan/week split -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="h-1 shrink-0 cursor-row-resize group flex items-center justify-center hover:bg-sky-500/30 transition-colors {dragging === 'split' ? 'bg-sky-500/30' : ''}"
+				onpointerdown={onPointerDown('split')}
+			>
+				<div class="w-8 h-[2px] rounded bg-slate-700 group-hover:bg-sky-500/60 transition-colors"></div>
+			</div>
+
+			<!-- Week detail -->
 			<div class="flex-1 min-h-0 overflow-y-auto">
 				<WeekDetail {weekData} onSelectRun={selectRun} />
 			</div>
+		</div>
+
+		<!-- Vertical drag handle: sidebar/main split -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="w-1 shrink-0 cursor-col-resize group flex items-center justify-center hover:bg-sky-500/30 transition-colors {dragging === 'sidebar' ? 'bg-sky-500/30' : ''}"
+			onpointerdown={onPointerDown('sidebar')}
+		>
+			<div class="h-8 w-[2px] rounded bg-slate-700 group-hover:bg-sky-500/60 transition-colors"></div>
 		</div>
 
 		<!-- Right: run detail -->
@@ -152,8 +221,17 @@
 		</div>
 	</div>
 
+	<!-- Horizontal drag handle: panels/terminal split -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="h-1 shrink-0 cursor-row-resize group flex items-center justify-center hover:bg-sky-500/30 transition-colors {dragging === 'terminal' ? 'bg-sky-500/30' : ''}"
+		onpointerdown={onPointerDown('terminal')}
+	>
+		<div class="w-8 h-[2px] rounded bg-slate-700 group-hover:bg-sky-500/60 transition-colors"></div>
+	</div>
+
 	<!-- Bottom: terminal -->
-	<div class="h-80 shrink-0">
+	<div class="shrink-0" style="height: {terminalHeight}px">
 		<div bind:this={terminalEl} class="h-full w-full"></div>
 	</div>
 </div>
