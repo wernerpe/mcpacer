@@ -16,6 +16,9 @@ dependencies = [
     "matplotlib>=3.7.0",
     "pydantic>=2.0.0",
     "ruamel.yaml>=0.18.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "websockets>=14.0",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,6 +38,7 @@ strava-running-coach = "strava_running_coach:main"
 strava-analyze-plan = "strava_running_coach.cli.analyze_plan:main"
 strava-generate-calendar = "strava_running_coach.cli.generate_calendar:main"
 strava-update-data = "strava_running_coach.cli.update_data:main"
+strava-coach = "strava_running_coach.web.launcher:main"
 
 [project.optional-dependencies]
 dev = [
