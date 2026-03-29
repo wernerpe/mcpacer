@@ -69,20 +69,36 @@ class PtyManager:
         loop = asyncio.get_event_loop()
         master_fd = self.master_fd
 
-        # PTY output -> WebSocket
+        # PTY output -> WebSocket using asyncio reader
+        output_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+        def _on_pty_readable() -> None:
+            try:
+                data = os.read(master_fd, 4096)
+                if data:
+                    output_queue.put_nowait(data)
+                else:
+                    output_queue.put_nowait(None)
+            except OSError as e:
+                import errno
+                if e.errno == errno.EIO:
+                    # Child process exited
+                    output_queue.put_nowait(None)
+                # BlockingIOError (EAGAIN) — just no data yet, ignore
+
+        loop.add_reader(master_fd, _on_pty_readable)
+
         async def read_pty() -> None:
-            while True:
-                try:
-                    await asyncio.sleep(0.01)
-                    try:
-                        data = os.read(master_fd, 4096)
-                        if data:
-                            await websocket.send_bytes(data)
-                    except OSError:
-                        # EIO means child exited
+            try:
+                while True:
+                    data = await output_queue.get()
+                    if data is None:
                         break
-                except asyncio.CancelledError:
-                    break
+                    await websocket.send_bytes(data)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                loop.remove_reader(master_fd)
 
         # WebSocket input -> PTY
         async def write_pty() -> None:
