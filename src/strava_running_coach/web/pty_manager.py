@@ -30,6 +30,7 @@ class PtyManager:
         self.master_fd: int | None = None
         self.process: subprocess.Popen | None = None
         self.project_root = _find_project_root()
+        self.bytes_sent: int = 0
 
     def start(self, rows: int = 40, cols: int = 120) -> None:
         """Spawn Claude Code in a PTY."""
@@ -76,6 +77,7 @@ class PtyManager:
             try:
                 data = os.read(master_fd, 4096)
                 if data:
+                    self.bytes_sent += len(data)
                     output_queue.put_nowait(data)
                 else:
                     output_queue.put_nowait(None)

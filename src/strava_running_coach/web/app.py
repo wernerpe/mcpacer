@@ -16,9 +16,25 @@ async def lifespan(app: FastAPI):
     """Start Claude Code PTY on startup, clean up on shutdown."""
     pty_manager.start()
 
-    # Auto-run the coaching skill after a short delay
+    # Auto-run the coaching skill once Claude Code is ready.
+    # Wait for output to settle (prompt is showing when output stops).
     async def inject_skill():
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(3.0)  # initial wait for startup
+        # Wait for output to go quiet (no data for 1.5s = prompt is ready)
+        last_size = 0
+        quiet_count = 0
+        for _ in range(20):  # up to 10 more seconds
+            await asyncio.sleep(0.5)
+            if pty_manager.process and pty_manager.process.poll() is not None:
+                return
+            current_size = pty_manager.bytes_sent
+            if current_size == last_size:
+                quiet_count += 1
+                if quiet_count >= 3:  # 1.5s of quiet
+                    break
+            else:
+                quiet_count = 0
+                last_size = current_size
         pty_manager.inject_command("/running-coach-v2\n")
 
     asyncio.create_task(inject_skill())
