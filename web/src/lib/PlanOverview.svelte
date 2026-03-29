@@ -48,11 +48,11 @@
 	}
 </script>
 
-<div class="p-3">
-	<h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Plan Overview</h2>
+<div class="p-3 pt-4">
+	<h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Plan Overview</h2>
 
 	<!-- Bar chart with Y axis -->
-	<div class="flex h-40">
+	<div class="flex h-40 overflow-hidden">
 		<!-- Y axis labels -->
 		<div class="flex flex-col justify-between items-end pr-1.5 shrink-0 relative" style="padding-bottom: 18px;">
 			{#each [...yTicks].reverse() as tick}

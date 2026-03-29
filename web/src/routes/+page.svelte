@@ -231,7 +231,8 @@
 	</div>
 
 	<!-- Bottom: terminal -->
-	<div class="shrink-0" style="height: {terminalHeight}px">
-		<div bind:this={terminalEl} class="h-full w-full"></div>
+	<div class="shrink-0 flex flex-col" style="height: {terminalHeight}px">
+		<div class="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b border-slate-800 shrink-0">Coach</div>
+		<div bind:this={terminalEl} class="flex-1 min-h-0 w-full"></div>
 	</div>
 </div>
