@@ -76,6 +76,10 @@ The coach reviews your training and responds based on your plan, recent activity
 
 > How's that groin feeling? And are we sticking to the dress rehearsal plan tomorrow or are you going to "freestyle" it again?
 
+Accountability is everything in training. The coach posts directly to your Strava activity descriptions. Feedback is concise, references the plan, and focuses on what matters:
+
+> Plan said 4x1km @ 3:55. You did 6x1km @ 3:39. That's 50% more volume and 16s/km faster than prescribed — in f***ing taper week. The hay is in the barn. Stop setting the damn barn on fire. I can't believe this.
+
 ### Dashboard Panels
 
 | Panel | What it shows |
