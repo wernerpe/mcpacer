@@ -4,6 +4,7 @@
 !.env.example
 .env*
 .claude/*
+.playwright-mcp/*
 # UV / Virtual environments
 .venv/
 venv/

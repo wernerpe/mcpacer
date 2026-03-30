@@ -50,6 +50,7 @@ def _run_to_json(run: dict[str, Any]) -> dict[str, Any]:
         "avg_hr": round(_run_avg_hr(run), 0) if _run_avg_hr(run) else None,
         "max_hr": max((lap.get("max_heartrate", 0) for lap in run.get("laps", [])), default=None),
         "elevation_gain": round(run.get("total_elevation_gain_metres", 0)),
+        "description": run.get("description", ""),
         "digest": run.get("run_digest"),
         "coach_notes": run.get("coach_notes", []),
     }

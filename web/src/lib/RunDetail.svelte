@@ -27,6 +27,7 @@
 		avg_hr: number | null;
 		max_hr: number | null;
 		elevation_gain: number;
+		description: string;
 		digest: string | null;
 		coach_notes: string[];
 		laps: Lap[];
@@ -173,6 +174,9 @@
 		<div class="mb-4">
 			<h2 class="text-lg font-semibold text-slate-100">{runData.name}</h2>
 			<p class="text-xs text-slate-500 mt-0.5">{formatDate(runData.date)}</p>
+			{#if runData.description}
+				<p class="text-xs text-slate-400 mt-2 whitespace-pre-line">{runData.description}</p>
+			{/if}
 		</div>
 
 		<!-- GPS Map -->
@@ -239,10 +243,12 @@
 					<span class="text-slate-600 font-normal ml-1">({runData.laps.length} laps)</span>
 				</h3>
 
-				<!-- Tooltip for hovered lap -->
+				<!-- Vertical bar chart — taller, touching bars, proportional widths -->
+				<div class="relative">
+				<!-- Tooltip for hovered lap (absolute so it doesn't shift layout) -->
 				{#if hoveredLap !== null}
 					{@const lap = runData.laps[hoveredLap]}
-					<div class="mb-2 px-3 py-1.5 bg-slate-800 rounded border border-slate-700 text-[11px] tabular-nums">
+					<div class="absolute -top-7 left-0 right-0 px-3 py-1 bg-slate-800 rounded border border-slate-700 text-[11px] tabular-nums z-10">
 						<span class="text-slate-200 font-medium">Lap {lap.index}</span>
 						<span class="text-slate-500 ml-3">{lap.distance_km}km</span>
 						{#if lap.pace}<span class="text-slate-200 ml-3">{lap.pace}/km</span>{/if}
@@ -250,8 +256,8 @@
 						{#if lap.avg_hr}<span class="text-red-400 ml-3">HR {lap.avg_hr}</span>{/if}
 					</div>
 				{/if}
+				</div>
 
-				<!-- Vertical bar chart — taller, touching bars, proportional widths -->
 				<div class="flex h-48">
 					<!-- Y axis (pace labels) -->
 					<div class="flex flex-col justify-between items-end pr-2 shrink-0" style="padding-bottom: 18px;">
