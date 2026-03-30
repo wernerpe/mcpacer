@@ -227,7 +227,7 @@ Then start a coaching session with `/mcpacer` in any Claude Code conversation.
 
 ## Acknowledgements
 
-This project started as a fork of [strava-mcp-server](https://github.com/tomek-korbak/strava-mcp-server) by Tomek Korbak, extended with coaching features, training plan management, persistent memory, and a web dashboard.
+This project started with a lot of inspiration from [strava-mcp-server](https://github.com/tomek-korbak/strava-mcp-server) by Tomek Korbak.
 
 ## License
 
