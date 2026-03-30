@@ -3,7 +3,9 @@
 An AI-powered running coach that connects Claude to your Strava data through the Model Context Protocol (MCP). Get personalized training plans, track your progress, and receive coaching feedback — all through a web dashboard with an integrated coaching terminal.
 
 > ⚠️
-> Use at your own risk. This is in beta, so if it messes up your computer or gets you injured it is not my fault. Suggestions are welcome.
+> Use at your own risk. This is in beta, so if it messes up your computer or gets you injured it is not my fault. Suggestions are welcome. And, most importantly, have fun with it! 🤠 
+> 
+>Pete
 
 ![Dashboard](misc/figures/title_figure.png)
 
