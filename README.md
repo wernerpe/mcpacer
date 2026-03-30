@@ -1,181 +1,234 @@
-# Strava Running Coach MCP
+# MCPacer
 
-An AI-powered running coach that connects Claude to your Strava data. Get personalized training plans, track your progress, and receive coaching feedback with customizable coach personas.
+An AI-powered running coach that connects Claude to your Strava data through the Model Context Protocol (MCP). Get personalized training plans, track your progress, and receive coaching feedback — all through a web dashboard with an integrated coaching terminal.
 
-The strava MCP server was based off of https://github.com/tomekkorbak/strava-mcp-server.
+> ⚠️
+> Use at your own risk. This is in beta, so if it messes up your computer or gets you injured it is not my fault. Suggestions are welcome. And, most importantly, have fun with it! 🤠 
+> 
+>Pete
+
+![Dashboard](misc/figures/title_figure.png)
 
 ## Features
 
-- **Personalized Coaching**: Customizable coach personas
-- **Training Plans**: Create, save, and track structured training plans in JSON format
-- **Progress Tracking**: Automatically sync and analyze your Strava running data
-- **Plan Adherence**: Compare planned vs actual workouts with completion rates
-- **Session Memory**: Coaching notes persist across conversations for continuity
-- **Visual Calendar**: Generate interactive HTML calendars showing your training plan
+- **Web Dashboard** — Plan overview, weekly breakdown, run detail with GPS maps and workout analysis charts
+- **Integrated Coaching Terminal** — Chat with your AI coach directly in the dashboard
+- **Customizable Personas** — Choose from multiple coaching styles (tough love, balanced, analytical, etc.)
+- **Training Plans** — Create, track, and adjust structured plans in YAML format
+- **Strava Sync** — Automatically pull activities, laps, HR, pace, and GPS data
+- **Plan Adherence** — Visual comparison of planned vs actual weekly mileage
+- **Persistent Memory** — Coach remembers your goals, injuries, patterns, and session history across conversations
+- **Run Digestion** — Each run gets a compact single-line summary for efficient context loading
 
-## Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- Python 3.12+
-- [UV](https://github.com/astral-sh/uv) package manager
-- Strava API credentials
+- **Python 3.12+**
+- **[UV](https://github.com/astral-sh/uv)** — Python package manager
+- **[Node.js 18+](https://nodejs.org/)** — Required for the web frontend (includes npm)
 
-### Installation
+### Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/peteskomoroch/strava-running-coach-mcp.git
-cd strava-running-coach-mcp
-
-# Install dependencies
+git clone https://github.com/wernerpe/mcpacer.git
+cd mcpacer
 uv sync
+claude mcp add strava -- uv run --directory $(pwd) mcpacer-server
+cp -r skills/mcpacer ~/.claude/skills/mcpacer
 ```
 
-### Strava API Setup
+This installs dependencies, registers the MCP server with Claude Code, and installs the `/mcpacer` coaching skill.
 
-1. Create a Strava API application at https://www.strava.com/settings/api
-2. Run the token helper:
-   ```bash
-   uv run python misc/get_strava_token.py
-   ```
-3. Follow the prompts to authorize and save your credentials to `.env`
-
-Your `.env` file should contain:
-```
-STRAVA_CLIENT_ID=your_client_id
-STRAVA_CLIENT_SECRET=your_client_secret
-STRAVA_REFRESH_TOKEN=your_refresh_token
-```
-
-## Usage
-
-### 1. Register the MCP Server
-
-Add the Strava MCP server to your Claude configuration file:
-
-**For Claude Desktop:** Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
-
-**For Claude Code:** Edit `~/.claude/mcp_config.json`
-
-Add the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "strava": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/absolute/path/to/strava-running-coach-mcp",
-        "run",
-        "strava-running-coach"
-      ],
-      "env": {
-        "STRAVA_REFRESH_TOKEN": "your_refresh_token",
-        "STRAVA_CLIENT_ID": "your_client_id",
-        "STRAVA_CLIENT_SECRET": "your_client_secret"
-      }
-    }
-  }
-}
-```
-
-**Important:** Replace `/absolute/path/to/strava-running-coach-mcp` with the full path to your cloned repository.
-
-After adding the configuration, restart Claude Desktop or Claude Code to load the MCP server.
-
-### 2. Install the Running Coach Skill (Optional)
-
-The `/running-coach` skill automates your coaching check-in workflow. To install it:
+### Launch
 
 ```bash
-# Create the skills directory if it doesn't exist
-mkdir -p ~/.claude/skills
-
-# Copy the skill to your personal skills directory
-cp -r skills/running-coach ~/.claude/skills/
+uv run mcpacer
 ```
 
-**Usage:** Open Claude Code and run `/running-coach`
+This starts both the FastAPI backend and SvelteKit frontend, then opens your browser. On first launch you'll see the onboarding screen.
+
+### Onboarding
+
+The onboarding screen walks you through connecting to Strava:
+
+1. **Create a Strava API app** — Go to [developers.strava.com/docs/getting-started](https://developers.strava.com/docs/getting-started/) (Section B) and create an app with:
+   - **Application Name:** `My Strava Running Coach`
+   - **Website:** `http://localhost`
+   - **Authorization Callback Domain:** `localhost`
+2. **Enter your credentials** — Paste the Client ID and Client Secret into the onboarding form
+3. **Authorize** — Click "Connect to Strava", approve in the popup, and you're in
+
+Credentials and tokens are stored locally in `.env` and never leave your machine.
+
+## How It Works
+
+### Coaching Sessions
+
+Run `/mcpacer` in the coaching terminal. The skill handles everything automatically:
+
+1. Loads coach memory, run context, plan context, and session logs
+2. Auto-loads your preferred persona
+3. Digests any new runs
+4. Opens the conversation
+
+The coach reviews your training and responds based on your plan, recent activity, and history:
+
+> How's that groin feeling? And are we sticking to the dress rehearsal plan tomorrow or are you going to "freestyle" it again?
+
+### Dashboard Panels
+
+| Panel | What it shows |
+|-------|---------------|
+| **Plan Overview** | Vertical bar chart of weekly mileage — planned (grey) vs actual (colored) |
+| **Week Detail** | Day-by-day breakdown with prescribed and completed runs |
+| **Run Detail** | GPS map, stats grid, workout analysis chart with proportional lap bars, splits table |
+| **Coach** | Integrated terminal running Claude Code |
+
+All panel dividers are draggable (VS Code-style).
+
+### Training Plans
+
+Plans are YAML files in `training_plans/`. The coach can create, modify, and track plans through MCP tools. Example structure:
+
+```yaml
+plan_name: Sub-3 Marathon Build
+goal_race:
+  date: 2026-04-04
+  goal_time: "2:59:59"
+weeks:
+  - week_number: 1
+    total_planned_distance_km: 75
+    runs:
+      - day_of_week: Wednesday
+        type: workout
+        distance_km: 16
+        structure: "2.5km warmup, 5x2km @ 3:50-3:55, cooldown"
+```
+
+### Coaching Personas
+
+Personas live in `coaching_data/personas/` as markdown files. Each defines a coaching style, tone, and behavioral rules. Available: `coach` (balanced), `david` (tough love), `roland`, `kim`, `hartmann`. Create your own by adding a `.md` file.
+
+## Architecture
+
+### MCP Tools
+
+The coach interacts with your data through these MCP tools:
+
+**Session Context**
+
+| Tool | Description |
+|------|-------------|
+| `get_run_context` | Sync activities from Strava and return tiered training overview |
+| `get_plan_context` | Active plan as compact text with current week highlighted |
+| `get_coaching_personas` | List available persona names |
+| `get_coaching_persona` | Load a persona's full coaching guidelines |
+
+**Coach Memory**
+
+| Tool | Description |
+|------|-------------|
+| `read_coach_memory` | Load COACH_MEMORY.md (athlete knowledge, flags, patterns) |
+| `update_coach_memory` | Rewrite a specific section in-place |
+| `get_session_logs` | Load recent session summaries (auto-distills older logs) |
+| `save_session_log` | Write session summary at end of conversation |
+
+**Activities & Runs**
+
+| Tool | Description |
+|------|-------------|
+| `get_activities` | Get recent activities from Strava (paginated) |
+| `get_activities_by_date_range` | Get activities within a date range |
+| `get_activity_by_id` | Get a single activity by Strava ID |
+| `get_activity_streams` | Get detailed data streams (pace, HR, altitude, cadence) |
+| `get_run_detail` | Formatted run summary with laps, HR, pace, elevation |
+| `get_pending_digests` | Get runs needing digestion with pre-built prompts |
+| `save_run_digest` | Save a compact digest line for a run |
+| `add_coaching_feedback` | Post coaching feedback to a Strava activity description |
+| `add_run_note` | Add a coach note to a run (stored locally) |
+
+**Training Plans**
+
+| Tool | Description |
+|------|-------------|
+| `list_training_plans` | List all saved plans |
+| `get_training_plan` | Retrieve full plan YAML by ID |
+| `update_plan_run` | Modify a single workout |
+| `update_plan_week` | Update week-level metadata |
+| `add_plan_run` | Add a new workout to a week |
+| `remove_plan_run` | Remove a workout from a week |
+| `add_plan_comment` | Document changes with a comment |
+
+### Memory & Context
+
+Every session starts fresh — no conversation history carries over. All continuity comes from structured context loaded at session start:
+
+```
+SESSION CONTEXT (~4000 tokens)
+├── Coach Memory .............. ~600 tok
+│   Long-term athlete knowledge: goals, PRs, injuries, patterns
+│   └── Session History (one-liners for older sessions)
+├── Run Context ............... ~1400 tok
+│   Tiered by age: one-liners for old weeks, full detail for recent
+├── Plan Context .............. ~1100 tok
+│   Day-by-day prescriptions, current week highlighted
+├── Session Logs .............. ~200 tok
+│   Last 3 session summaries for conversation continuity
+└── Persona ................... ~500 tok
+    Coaching tone, personality, communication style
+```
+
+### Project Structure
+
+```
+mcpacer/
+├── src/mcpacer/
+│   ├── server.py           # MCP server entry point
+│   ├── strava_client.py    # Strava API client
+│   ├── tools/              # MCP tool implementations
+│   ├── storage/            # Run and plan persistence
+│   ├── web/
+│   │   ├── app.py          # FastAPI app (REST + WebSocket)
+│   │   ├── api.py          # Dashboard REST endpoints
+│   │   ├── auth.py         # Strava OAuth flow
+│   │   ├── pty_manager.py  # Claude Code PTY management
+│   │   └── launcher.py     # Starts backend + frontend
+│   └── cli/                # CLI commands
+├── web/                    # SvelteKit frontend
+│   └── src/
+│       ├── routes/         # Page routes
+│       └── lib/            # Svelte components
+├── coaching_data/          # Personas (tracked), memory (gitignored)
+├── training_plans/         # Plan YAML files (gitignored)
+├── run_data/               # Cached Strava data (gitignored)
+└── skills/                 # Claude Code skills
+```
 
 ### CLI Commands
 
 ```bash
-# Update local run data from Strava
-uv run strava-update-data
-
-# Generate a training report
-uv run strava-generate-report
-
-# Analyze plan adherence
-uv run strava-analyze-plan [plan_id]
-
-# Generate visual training calendar
-uv run strava-generate-calendar [plan_id]
+uv run mcpacer                   # Launch the web dashboard
+uv run mcpacer-update-data       # Sync run data from Strava
+uv run mcpacer-analyze-plan      # Analyze plan adherence
+uv run mcpacer-generate-calendar # Generate HTML training calendar
 ```
 
-## MCP Tools
+### Using as MCP Server Only
 
-| Tool | Description |
-|------|-------------|
-| `get_activities` | Get recent activities from Strava |
-| `get_training_report` | Comprehensive training summary with weekly breakdowns |
-| `save_training_plan` | Save a training plan (JSON format) |
-| `list_training_plans` | List all saved training plans |
-| `get_training_plan` | Retrieve a specific plan |
-| `analyze_plan_adherence` | Compare planned vs actual workouts |
-| `get_coaching_personas` | List available coaching personas |
-| `get_coaching_context` | Load coach persona and athlete profile |
-| `save_coaching_note` | Persist coaching insights |
-| `update_athlete_profile` | Update athlete preferences and goals |
-| `add_coaching_feedback` | Post coaching feedback to Strava activity descriptions |
+If you prefer to use the coaching tools without the web dashboard (e.g., in Claude Desktop):
 
-## Coaching Workflows
-
-### Starting a Coaching Session
-
-Ask Claude to load the coaching context:
-> "Let's do a coaching check-in. Load my coaching context and review my recent training."
-
-### Creating a Training Plan
-
-> "I have a marathon on April 4th targeting sub-3 hours. Create a 16-week training plan based on my recent fitness."
-
-### Weekly Check-ins
-
-> "How did my training go this week? What should I focus on?"
-
-### Adjusting Plans
-
-> "I'm feeling some knee pain. Can you adjust my plan for this week?"
-
-## Customizing Your Coach
-
-Coach personas are stored in `coaching_data/personas/`. You can customize existing personas or create new ones by adding `.md` files to this directory.
-
-## Project Structure
-
+```bash
+claude mcp add strava -- uv run --directory /path/to/mcpacer mcpacer-server
+cp -r /path/to/mcpacer/skills/mcpacer ~/.claude/skills/mcpacer
 ```
-strava-running-coach-mcp/
-├── src/strava_running_coach/
-│   ├── server.py           # MCP server entry point
-│   ├── strava_client.py    # Strava API client
-│   ├── tools/              # MCP tool implementations
-│   ├── models/             # Pydantic data models
-│   ├── storage/            # JSON persistence layer
-│   ├── utils/              # Utilities (dates, formatting)
-│   └── cli/                # CLI commands
-├── coaching_data/          # Coach personas (tracked)
-├── run_data/               # Cached Strava data (gitignored)
-├── training_plans/         # Saved plans (gitignored)
-└── misc/                   # Helper scripts
-```
+
+Then start a coaching session with `/mcpacer` in any Claude Code conversation.
 
 ## Acknowledgements
 
-This project is a fork of [strava-mcp-server](https://github.com/tomek-korbak/strava-mcp-server) by Tomek Korbak, extended with coaching features, training plan management, and persistent memory.
+This project started as a fork of [strava-mcp-server](https://github.com/tomek-korbak/strava-mcp-server) by Tomek Korbak, extended with coaching features, training plan management, persistent memory, and a web dashboard.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.

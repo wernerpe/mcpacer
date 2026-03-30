@@ -1,9 +1,12 @@
+tmp/
+
 # Environment
 .env
 .env.*
 !.env.example
 .env*
 .claude/*
+.playwright-mcp/*
 # UV / Virtual environments
 .venv/
 venv/
@@ -51,9 +54,19 @@ dmypy.json
 # Project data (user-specific)
 run_data/
 training_plans/
+coaching_data/COACH_MEMORY.md
+coaching_data/session_logs/
 coaching_data/session_notes*.json
 coaching_data/athlete_profile*.json
 coaching_data/plan_adjustments*.json
+
+# Web frontend (SvelteKit)
+web/node_modules/
+web/.svelte-kit/
+web/build/
+
+# Setup notes (local only)
+SETUP_NOTES.md
 
 # Generated files
 training_calendar.html

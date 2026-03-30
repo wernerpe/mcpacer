@@ -143,7 +143,7 @@ def main() -> None:
     update_env_file(token_data)
 
     print("\n=== Success! ===")
-    print("You can now run the strava-running-coach to access your Strava data.")
+    print("You can now run mcpacer-server to access your Strava data.")
 
 
 if __name__ == "__main__":
