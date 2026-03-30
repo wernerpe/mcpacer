@@ -115,10 +115,10 @@ class PtyManager:
                         # Check for resize messages
                         try:
                             msg = json.loads(text)
-                            if msg.get("type") == "resize":
+                            if isinstance(msg, dict) and msg.get("type") == "resize":
                                 self.resize(msg["rows"], msg["cols"])
                                 continue
-                        except (json.JSONDecodeError, KeyError):
+                        except Exception:
                             pass
                         os.write(master_fd, text.encode())
 
