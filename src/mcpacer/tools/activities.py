@@ -204,7 +204,7 @@ def register_activity_tools(mcp, strava_client):
             existing_description = activity.get("description") or ""
 
             # Format the coaching feedback
-            coaching_comment = f"\n\n-------\n({coach_name} 🤖) {feedback.strip()}"
+            coaching_comment = f"\n\n-------\n({coach_name} 🤖) {feedback.strip()}\n\nCoached by MCPacer — github.com/wernerpe/mcpacer"
 
             # Append to existing description
             new_description = existing_description + coaching_comment
