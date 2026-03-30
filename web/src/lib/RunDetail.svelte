@@ -162,6 +162,13 @@
 	}
 
 	let hoveredLap = $state<number | null>(null);
+	let descExpanded = $state(false);
+
+	// Reset expanded state when run changes
+	$effect(() => {
+		runData?.id;
+		descExpanded = false;
+	});
 </script>
 
 {#if loading}
@@ -174,8 +181,23 @@
 		<div class="mb-4">
 			<h2 class="text-lg font-semibold text-slate-100">{runData.name}</h2>
 			<p class="text-xs text-slate-500 mt-0.5">{formatDate(runData.date)}</p>
-			{#if runData.description}
-				<p class="text-xs text-slate-400 mt-2 whitespace-pre-line">{runData.description}</p>
+			{#if runData.description?.trim()}
+				{@const trimmed = runData.description.trim()}
+				{@const firstLine = trimmed.split('\n')[0]}
+				{@const hasMore = trimmed.includes('\n') || firstLine.length > 80}
+				<div class="mt-2">
+					{#if descExpanded}
+						<p class="text-xs text-slate-400 whitespace-pre-line break-words">{trimmed}</p>
+					{:else}
+						<p class="text-xs text-slate-400 line-clamp-2 break-words">{firstLine}</p>
+					{/if}
+					{#if hasMore}
+						<button
+							class="text-[10px] text-slate-600 hover:text-slate-400 cursor-pointer mt-0.5"
+							onclick={() => descExpanded = !descExpanded}
+						>{descExpanded ? 'show less' : 'show more'}</button>
+					{/if}
+				</div>
 			{/if}
 		</div>
 

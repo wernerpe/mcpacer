@@ -1,5 +1,5 @@
 [project]
-name = "strava-running-coach-mcp"
+name = "mcpacer"
 version = "0.1.0"
 description = "AI Running Coach powered by Claude + Strava - MCP server for personalized training plans and coaching"
 readme = "README.md"
@@ -34,11 +34,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-strava-running-coach = "strava_running_coach:main"
-strava-analyze-plan = "strava_running_coach.cli.analyze_plan:main"
-strava-generate-calendar = "strava_running_coach.cli.generate_calendar:main"
-strava-update-data = "strava_running_coach.cli.update_data:main"
-strava-coach = "strava_running_coach.web.launcher:main"
+mcpacer-server = "mcpacer:main"
+mcpacer-analyze-plan = "mcpacer.cli.analyze_plan:main"
+mcpacer-generate-calendar = "mcpacer.cli.generate_calendar:main"
+mcpacer-update-data = "mcpacer.cli.update_data:main"
+mcpacer = "mcpacer.web.launcher:main"
 
 [project.optional-dependencies]
 dev = [
@@ -47,11 +47,11 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/peteskomoroch/strava-running-coach-mcp"
-"Bug Tracker" = "https://github.com/peteskomoroch/strava-running-coach-mcp/issues"
+"Homepage" = "https://github.com/peteskomoroch/mcpacer"
+"Bug Tracker" = "https://github.com/peteskomoroch/mcpacer/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/strava_running_coach"]
+packages = ["src/mcpacer"]
 
 [tool.hatch.build]
 only-packages = true

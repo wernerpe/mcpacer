@@ -22,8 +22,8 @@ Fix the foundation so the coach works well when used from Claude Code via the ex
 
 Make the training plan useful outside the coaching session.
 
-1. **Markdown table export** — `strava-coach export-plan [plan_id]` → `.md` file with week × day table
-2. **Calendar export** — `strava-coach export-calendar [plan_id]` → `.ics` file for Google/Apple Calendar
+1. **Markdown table export** — `mcpacer export-plan [plan_id]` → `.md` file with week × day table
+2. **Calendar export** — `mcpacer export-calendar [plan_id]` → `.ics` file for Google/Apple Calendar
 3. **Repo cleanup** — README, `.gitignore`, remove OpenClaw-specific artifacts, `example.config.toml`
 
 ### Phase 3a — Terminal in a Browser
@@ -33,8 +33,8 @@ Minimum viable web app. Get Claude Code running in a dark-themed browser window.
 1. **FastAPI skeleton** — PTY spawn for Claude Code, WebSocket bridge
 2. **SvelteKit scaffold** — Tailwind dark theme, single-page layout
 3. **xterm.js terminal** — full-screen, connected to backend via WebSocket
-4. **`strava-coach` command** — starts backend + opens browser to `localhost:5173`
-5. **Auto-run** — `/running-coach-v2` skill launches on connect
+4. **`mcpacer` command** — starts backend + opens browser to `localhost:5173`
+5. **Auto-run** — `/mcpacer` skill launches on connect
 
 **Done when:** Full coaching session works in the browser. No panels yet — just a nice dark terminal.
 
@@ -67,7 +67,7 @@ Rich right panel with maps, charts, and lap data.
 2. **Resizable dividers** — especially terminal height
 3. **Route polyline** colored by pace or HR zones
 4. **Elevation profile** chart
-5. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.strava-coach/`
+5. **Setup wizard** — Strava OAuth, LLM selection, config to `~/.mcpacer/`
 6. **Onboarding flow** — first-run conversation, PR collection, initial `COACH_MEMORY.md` generation
 
 ---
@@ -89,35 +89,35 @@ Three commands, ever:
 
 ```bash
 uv sync
-strava-coach setup   # one-time
-strava-coach         # launches the TUI
+mcpacer setup   # one-time
+mcpacer         # launches the TUI
 ```
 
-After setup, `strava-coach` is all a user ever runs.
+After setup, `mcpacer` is all a user ever runs.
 
 ---
 
-## Setup Flow (`strava-coach setup`)
+## Setup Flow (`mcpacer setup`)
 
 An interactive wizard run once:
 
 ### Step 1 — Strava Auth
 - Opens browser to Strava OAuth flow
-- User approves, tokens stored to `~/.strava-coach/config.toml`
+- User approves, tokens stored to `~/.mcpacer/config.toml`
 - Based on the existing `misc/get_strava_token.py` — promote to a proper CLI step
 
 ### Step 2 — LLM Selection
 - Menu: `[1] Claude  [2] OpenAI  [3] Other`
 - For Claude: opens browser to Anthropic Console for API key (mirrors Claude Code auth UX)
 - For others: prompt for API key
-- Stored in `~/.strava-coach/config.toml`
+- Stored in `~/.mcpacer/config.toml`
 - Use **LiteLLM** as the unified interface so the rest of the codebase is model-agnostic
 
 ### Step 3 — Onboarding Conversation
-- Automatically triggered on first `strava-coach` launch (detected by absence of `~/.strava-coach/COACH_MEMORY.md`)
+- Automatically triggered on first `mcpacer` launch (detected by absence of `~/.mcpacer/COACH_MEMORY.md`)
 - See Onboarding section below
 
-Config lives in `~/.strava-coach/` (never in the repo). Repo ships `example.config.toml`.
+Config lives in `~/.mcpacer/` (never in the repo). Repo ships `example.config.toml`.
 
 ---
 
@@ -126,7 +126,7 @@ Config lives in `~/.strava-coach/` (never in the repo). Repo ships `example.conf
 SvelteKit + Tailwind CSS (dark theme) frontend, FastAPI backend, with Claude Code embedded via xterm.js. Single command launches the server and opens the browser.
 
 ```bash
-strava-coach        # starts backend, opens browser to localhost:5173
+mcpacer        # starts backend, opens browser to localhost:5173
 ```
 
 ### Tech Stack
@@ -202,7 +202,7 @@ strava-coach        # starts backend, opens browser to localhost:5173
 
 **Coach Chat (bottom strip)**
 - xterm.js terminal running Claude Code
-- Auto-launches `/running-coach-v2` on session start
+- Auto-launches `/mcpacer` on session start
 - Resizable — can drag the divider up for more chat space
 - Coach persona shown in the prompt/header area
 
@@ -241,11 +241,11 @@ Tailwind dark theme throughout. Key design tokens:
 
 ### Startup Sequence
 
-1. `strava-coach` command starts FastAPI backend
+1. `mcpacer` command starts FastAPI backend
 2. Backend spawns Claude Code in a PTY
 3. Opens browser to `localhost:5173`
 4. Frontend connects WebSocket to backend (terminal + data updates)
-5. Claude Code auto-runs `/running-coach-v2` skill
+5. Claude Code auto-runs `/mcpacer` skill
 6. Panels populate from backend API (plan, weeks, runs)
 7. File watchers detect changes from the coaching session and push updates
 
@@ -255,7 +255,7 @@ Each session is **fresh** (no conversation history carried over). Memory files p
 
 ## Onboarding (First Run Only)
 
-Detected by absence of `~/.strava-coach/COACH_MEMORY.md`.
+Detected by absence of `~/.mcpacer/COACH_MEMORY.md`.
 
 ### Data fetched automatically (before first message):
 - Last 4 weeks of activity summaries — for volume trend and recent context (~20 API calls)
@@ -290,13 +290,13 @@ This approach is preferred over scanning Strava activity history for `best_effor
 - Open field for the athlete to share anything the coach should know
 
 ### At end of onboarding:
-Coach writes initial `~/.strava-coach/COACH_MEMORY.md`. This becomes the permanent foundation for all future sessions.
+Coach writes initial `~/.mcpacer/COACH_MEMORY.md`. This becomes the permanent foundation for all future sessions.
 
 ---
 
 ## Memory Architecture
 
-All memory lives in `~/.strava-coach/` (user's home, not the repo).
+All memory lives in `~/.mcpacer/` (user's home, not the repo).
 
 ### `COACH_MEMORY.md` — Long-term memory
 
@@ -697,7 +697,7 @@ Example: `update_plan_run("boston-2027", 4, "Sunday", {type: "easy", distance_km
 
 ### Markdown Table (Phase 1 — implement first)
 
-`strava-coach export-plan [plan_id]` generates a `.md` file with a week × day table. Renders well in GitHub, VS Code, Obsidian, or any markdown viewer.
+`mcpacer export-plan [plan_id]` generates a `.md` file with a week × day table. Renders well in GitHub, VS Code, Obsidian, or any markdown viewer.
 
 **Layout:** rows = weeks, columns = Mon–Sun + summary. Week column contains number and focus theme.
 
@@ -737,7 +737,7 @@ The export is generated from the YAML plan at any time — re-run after edits to
 Training plan → calendar in two phases:
 
 **Phase 1 (implement first): ICS export**
-- `strava-coach export-calendar [plan_id]` generates a `.ics` file
+- `mcpacer export-calendar [plan_id]` generates a `.ics` file
 - User imports into Google Calendar / Apple Calendar / anything
 - Zero infrastructure, works everywhere
 - Limitation: static — re-export and re-import after plan edits
@@ -828,14 +828,14 @@ These are the existing v1 Strava tools, kept as-is. They return raw Strava API d
 The TUI is a standalone Python process that acts as an **MCP client** — it spawns the existing MCP server as a subprocess and drives it via the stdio transport. The server code does not change. The TUI gets the full tool suite automatically.
 
 ```
-strava-coach (entry point)
+mcpacer (entry point)
        │
   Agent loop
-       ├── LLM client (LiteLLM — model agnostic, configured in ~/.strava-coach/config.toml)
+       ├── LLM client (LiteLLM — model agnostic, configured in ~/.mcpacer/config.toml)
        └── MCP client (mcp.client.stdio)
                 │  spawns as subprocess, stdio transport
                 ▼
-    strava-running-coach MCP server (existing code, unchanged)
+    mcpacer-server MCP server (existing code, unchanged)
             ├── memory tools
             ├── run tools
             ├── training plan tools
@@ -869,7 +869,7 @@ async with stdio_client(server_params) as (read, write):
 ### Startup Sequence
 
 ```
-$ strava-coach
+$ mcpacer
   Select coach: [1] Coach  [2] David  [3] Roland  [4] Kim  [5] Hartmann
   > 3
 
@@ -885,9 +885,9 @@ $ strava-coach
 When the user exits (`/exit` or Ctrl+C):
 1. TUI sends a final message to the LLM: *"Session ending. Write a 3–5 line summary of what was discussed."*
 2. LLM responds with summary
-3. TUI writes summary to `~/.strava-coach/memory/YYYY-MM-DD.md` automatically — not LLM-dependent
+3. TUI writes summary to `~/.mcpacer/memory/YYYY-MM-DD.md` automatically — not LLM-dependent
 
-### Config (`~/.strava-coach/config.toml`)
+### Config (`~/.mcpacer/config.toml`)
 
 ```toml
 [strava]
@@ -905,12 +905,12 @@ api_key = "..."
 
 ## Repo Cleanup (Pre-Release Checklist)
 
-- [ ] All secrets in `~/.strava-coach/config.toml`, `.env` removed from repo patterns
+- [ ] All secrets in `~/.mcpacer/config.toml`, `.env` removed from repo patterns
 - [ ] `run_data/`, `training_plans/`, `coaching_data/athlete_profile_*.json`, `coaching_data/session_notes_*.json` in `.gitignore`
 - [ ] `skills/running-coach/SKILL.md` — remove or move to `docs/` with a note that it's for OpenClaw users
 - [ ] README rewritten: covers setup, daily use, LLM configuration
 - [ ] `example.config.toml` ships in repo
-- [ ] `misc/get_strava_token.py` promoted into `strava-coach setup` wizard, old script removed
+- [ ] `misc/get_strava_token.py` promoted into `mcpacer setup` wizard, old script removed
 - [ ] License verified ✓
 
 ---
@@ -944,6 +944,6 @@ This is a rewrite, not a patch. Old code that is replaced by v2 should be **dele
 - **`get_coaching_context` (v1 monolith loader)** — replaced by the separate startup flow (`read_coach_memory` + `get_run_context` + `get_plan_context` + session logs). Delete.
 - **JSON training plan storage** — replaced by YAML. Delete `TrainingPlanStorage` JSON logic, keep only YAML read/write.
 - **`CoachingStorage` class** — most of it is obsolete (session notes, athlete profile, plan adjustments). Gut it down to just persona loading, or inline that into the coaching tools directly.
-- **CLI commands** (`strava-generate-report`, `strava-analyze-plan`, `strava-generate-calendar`) — evaluate which are still needed after v2 tools exist. Don't keep dead entry points.
+- **CLI commands** (`mcpacer-generate-report`, `mcpacer-analyze-plan`, `mcpacer-generate-calendar`) — evaluate which are still needed after v2 tools exist. Don't keep dead entry points.
 
 The goal is a clean codebase where every file and function earns its place. If something is replaced by a v2 equivalent, the old version goes away — no compatibility shims, no "legacy" modules, no dead code behind flags.
