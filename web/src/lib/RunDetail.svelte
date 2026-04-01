@@ -283,7 +283,7 @@
 				<div class="flex h-48">
 					<!-- Y axis (pace labels) -->
 					<div class="flex flex-col justify-between items-end pr-2 shrink-0" style="padding-bottom: 18px;">
-						{#each [...yTicks].reverse() as tick}
+						{#each yTicks as tick}
 							<span class="text-[10px] tabular-nums text-slate-500 leading-none">{secondsToPace(tick)}</span>
 						{/each}
 					</div>
