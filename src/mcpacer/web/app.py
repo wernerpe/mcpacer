@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from mcpacer.web.api import router as api_router
 from mcpacer.web.auth import router as auth_router
+from mcpacer.web.events import broadcast, register
 from mcpacer.web.pty_manager import PtyManager
 
 pty_manager = PtyManager()
@@ -62,6 +63,17 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/api/notify")
+async def notify_dashboard():
+    await broadcast()
+    return {"ok": True}
+
+
+@app.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket):
+    await register(websocket)
 
 
 @app.websocket("/ws")

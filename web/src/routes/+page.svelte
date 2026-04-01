@@ -91,8 +91,16 @@
 
 	function initDashboard() {
 		loadWeeks();
+		initEventSocket();
 		// Wait a tick for Svelte to render the terminal element
 		requestAnimationFrame(() => initTerminal());
+	}
+
+	function initEventSocket() {
+		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+		const ws = new WebSocket(`${protocol}//${window.location.host}/ws/events`);
+		ws.onmessage = () => loadWeeks();
+		ws.onclose = () => setTimeout(initEventSocket, 3000);
 	}
 
 	function initTerminal() {

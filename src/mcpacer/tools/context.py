@@ -3,6 +3,8 @@
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
+
 from mcpacer.context import render_run_context
 from mcpacer.digestion import needs_digest
 from mcpacer.storage.runs import RunStorage
@@ -105,5 +107,11 @@ def register_context_tools(mcp, strava_client):
 
         # Render the context
         context = render_run_context(runs)
+
+        # Notify dashboard to refresh (no-op if web server isn't running)
+        try:
+            httpx.post("http://localhost:8000/api/notify", timeout=1.0)
+        except Exception:
+            pass
 
         return sync_msg + context
