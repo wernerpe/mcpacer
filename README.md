@@ -3,7 +3,7 @@
 An AI-powered running coach that connects Claude to your Strava data through the Model Context Protocol (MCP). Get personalized training plans, track your progress, and receive coaching feedback — all through a web dashboard with an integrated coaching terminal. Currently, it has only been tested on Ubuntu.
 
 > ⚠️
-> Use at your own risk. This is supposed to be a fun gadget to mess around with. That being said, I am only a hobby jogger, and it does run on top of claude code so if it messes up your computer or gets you injured it is not my fault. So take care, but also do have fun with it! 🤠  
+> Use at your own risk. This is supposed to be a fun gadget to mess around with. That being said, I am only a hobby jogger, and it does run on top of claude code so if it messes up your computer or gets you injured it is not my fault. So take care, but also do have fun with it! I developped this to learn about MCP servers, and coach myself to a sub-3 hour marathon (https://www.strava.com/activities/17976045034) in a 14-ish week build starting from a 3:11:02 PR. In the future, I am looking to add in a library of workouts from the pros, gym, and PT coaching features so I can debug my body during future training 🤠  
 > 
 >Pete
 >
