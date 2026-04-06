@@ -65,7 +65,7 @@ def generate_html(
 
     # Match actual runs to planned workouts
     actual_data: dict[str, Any] = {}
-    for date_str, planned in plan_data.items():
+    for date_str, _planned in plan_data.items():
         date_obj = parse_date(date_str).date()
         actual_run = find_run_for_date(date_obj, actual_runs)
         if actual_run:

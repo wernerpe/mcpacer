@@ -14,9 +14,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from mcpacer.digestion import parse_digest_tag, strip_digest_tag
-from mcpacer.storage.runs import RunStorage
-from mcpacer.utils.formatting import format_pace, format_duration
-
+from mcpacer.utils.formatting import format_duration, format_pace
 
 # How far back to include in context
 MAX_WEEKS_BACK = 12
@@ -192,7 +190,6 @@ def _format_week_oneliner(monday: date, runs: list[dict[str, Any]], week_num: in
 
     Format: W1  Feb 2   75km | 5 runs | 5:10/km HR 140 | Long 27km | Workout: 5×1600m @4:00
     """
-    sunday = monday + timedelta(days=6)
     month_day = monday.strftime("%b %-d")
 
     total_dist = sum(r.get("distance_metres", 0) for r in runs) / 1000
@@ -283,7 +280,7 @@ def render_run_context(runs: list[dict[str, Any]]) -> str:
         for monday in sorted_older:
             week_num = week_numbers[monday]
             week_runs = older_weeks[monday]
-            lines.append(week_num_line := _format_week_oneliner(monday, week_runs, week_num))
+            lines.append(_format_week_oneliner(monday, week_runs, week_num))
 
     # Recent weeks — per-run detail
     if recent_weeks:
@@ -294,7 +291,6 @@ def render_run_context(runs: list[dict[str, Any]]) -> str:
         week_numbers = {m: i + 1 for i, m in enumerate(all_mondays)}
 
         for monday in sorted(recent_weeks.keys()):
-            sunday = monday + timedelta(days=6)
             week_num = week_numbers[monday]
             is_current = monday == current_monday
             week_runs = recent_weeks[monday]

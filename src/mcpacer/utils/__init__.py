@@ -1,6 +1,5 @@
 """Utility functions for the Strava Running Coach."""
 
-from mcpacer.utils.formatting import format_duration, format_pace
 from mcpacer.utils.dates import (
     date_to_timestamp,
     get_week_date_range,
@@ -9,6 +8,7 @@ from mcpacer.utils.dates import (
     parse_date,
     timestamp_to_date,
 )
+from mcpacer.utils.formatting import format_duration, format_pace
 
 __all__ = [
     "format_pace",

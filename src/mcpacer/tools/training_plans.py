@@ -6,7 +6,7 @@ from typing import Any
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from mcpacer.plan_context import render_plan_context
-from mcpacer.storage.training_plans import TrainingPlanStorage, DAY_ORDER
+from mcpacer.storage.training_plans import DAY_ORDER, TrainingPlanStorage
 
 
 def register_training_plan_tools(mcp):

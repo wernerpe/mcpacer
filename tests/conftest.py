@@ -1,6 +1,5 @@
 """Shared test configuration — isolate all storage to temp directories."""
 
-import os
 
 import pytest
 

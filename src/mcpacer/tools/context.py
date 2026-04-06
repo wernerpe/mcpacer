@@ -1,14 +1,11 @@
 """MCP tools for run context — the training snapshot loaded at session start."""
 
 from datetime import datetime, timedelta
-from typing import Any
 
 import httpx
 
 from mcpacer.context import render_run_context
-from mcpacer.digestion import needs_digest
 from mcpacer.storage.runs import RunStorage
-
 
 # Sync window — how far back to look for new activities
 SYNC_WEEKS = 12

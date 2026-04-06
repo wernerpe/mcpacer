@@ -64,7 +64,10 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "B", "W"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -76,4 +79,5 @@ disallow_incomplete_defs = true
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ruff>=0.14.14",
 ]

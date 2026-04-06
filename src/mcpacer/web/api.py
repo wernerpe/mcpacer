@@ -1,6 +1,6 @@
 """REST API endpoints for the web dashboard."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter

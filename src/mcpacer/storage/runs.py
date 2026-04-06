@@ -1,6 +1,5 @@
 """Run data storage for locally caching Strava activities."""
 
-from pathlib import Path
 from typing import Any
 
 from mcpacer.storage.base import BaseStorage

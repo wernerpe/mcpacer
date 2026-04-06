@@ -6,7 +6,6 @@ from pathlib import Path
 
 from mcpacer.storage.base import BaseStorage
 
-
 # Valid section names mapping to ## headers in COACH_MEMORY.md
 MEMORY_SECTIONS = {
     "athlete": "Athlete",
@@ -132,7 +131,6 @@ class MemoryStorage(BaseStorage):
         if len(log_files) <= keep_recent:
             return
 
-        recent = log_files[:keep_recent]
         old = log_files[keep_recent:]
 
         # Generate one-liners for old logs
@@ -168,7 +166,7 @@ class MemoryStorage(BaseStorage):
                 existing_lines.append(oneliner)
 
         # Sort by date descending, cap at max
-        existing_lines.sort(key=lambda l: l[2:12], reverse=True)
+        existing_lines.sort(key=lambda line: line[2:12], reverse=True)
         existing_lines = existing_lines[:SESSION_HISTORY_MAX_LINES]
 
         # Write back to coach memory

@@ -1,6 +1,6 @@
 """MCP tools for coach memory and session logs."""
 
-from mcpacer.storage.memory import MEMORY_SECTIONS, MemoryStorage
+from mcpacer.storage.memory import MemoryStorage
 
 
 def register_memory_tools(mcp):

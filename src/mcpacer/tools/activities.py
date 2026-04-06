@@ -3,10 +3,10 @@
 from datetime import datetime, timedelta
 from typing import Any
 
-from mcpacer.digestion import add_coach_note, needs_digest, build_digestion_prompt
+from mcpacer.digestion import add_coach_note, build_digestion_prompt, needs_digest
 from mcpacer.storage.runs import RunStorage
 from mcpacer.utils.dates import parse_date
-from mcpacer.utils.formatting import format_pace, format_duration
+from mcpacer.utils.formatting import format_duration, format_pace
 
 
 def register_activity_tools(mcp, strava_client):

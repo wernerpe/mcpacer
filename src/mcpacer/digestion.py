@@ -18,7 +18,6 @@ from typing import Any
 
 from mcpacer.utils.formatting import format_pace
 
-
 # How far back to look for undigested runs
 DIGEST_WINDOW_DAYS = 10
 

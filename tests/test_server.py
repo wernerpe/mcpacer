@@ -3,8 +3,6 @@
 Tests the auth and API routers in isolation (no PTY, no real Strava OAuth).
 """
 
-import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
