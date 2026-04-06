@@ -1,10 +1,10 @@
 """MCP tools for the Strava MCP Server."""
 
 from mcpacer.tools.activities import register_activity_tools
-from mcpacer.tools.training_plans import register_training_plan_tools
 from mcpacer.tools.coaching import register_coaching_tools
-from mcpacer.tools.memory import register_memory_tools
 from mcpacer.tools.context import register_context_tools
+from mcpacer.tools.memory import register_memory_tools
+from mcpacer.tools.training_plans import register_training_plan_tools
 
 __all__ = [
     "register_activity_tools",

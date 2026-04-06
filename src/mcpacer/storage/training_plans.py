@@ -1,14 +1,13 @@
 """Training plan storage — YAML with ruamel.yaml for comment-preserving round-trips."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.comments import CommentedMap
 
 from mcpacer.storage.base import get_data_dir
-
 
 # Day-of-week ordering for sorting runs within a week
 DAY_ORDER = {

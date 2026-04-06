@@ -13,8 +13,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from mcpacer.strava_client import StravaClient
 from mcpacer.storage.runs import RunStorage
+from mcpacer.strava_client import StravaClient
 
 # Configuration
 LOOKBACK_WEEKS = 4

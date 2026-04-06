@@ -5,7 +5,6 @@ from typing import Any
 
 from ruamel.yaml.comments import CommentedMap
 
-
 # Day abbreviations for the compact format
 DAY_ABBREV = {
     "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed",
