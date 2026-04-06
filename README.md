@@ -1,5 +1,7 @@
 # MCPacer
 
+[![Tests](https://github.com/wernerpe/mcpacer/actions/workflows/tests.yml/badge.svg)](https://github.com/wernerpe/mcpacer/actions/workflows/tests.yml)
+
 An AI-powered running coach that connects Claude to your Strava data through the Model Context Protocol (MCP). Get personalized training plans, track your progress, and receive coaching feedback — all through a web dashboard with an integrated coaching terminal. Currently, it has only been tested on Ubuntu.
 
 > ⚠️
