@@ -44,6 +44,8 @@ mcpacer = "mcpacer.web.launcher:main"
 dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "pytest>=8.0.0",
+    "httpx>=0.24.0",
 ]
 
 [project.urls]
@@ -56,6 +58,9 @@ packages = ["src/mcpacer"]
 [tool.hatch.build]
 only-packages = true
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -67,3 +72,8 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

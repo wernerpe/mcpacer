@@ -102,7 +102,7 @@ def main() -> None:
         # Start SvelteKit dev server
         print("Starting frontend...")
         frontend = subprocess.Popen(
-            ["npm", "run", "dev", "--", "--port", "5173"],
+            ["npm", "run", "dev", "--", "--port", "5173", "--host", "127.0.0.1"],
             cwd=str(web_dir),
             env={**os.environ, "BROWSER": "none"},
         )
