@@ -214,6 +214,13 @@ def register_activity_tools(mcp, strava_client):
                 activity_id, description=new_description
             )
 
+            # Keep the local cache in sync so the GUI and future reads see
+            # the new description without waiting for the next Strava sync.
+            cached = run_storage.load_run(activity_id)
+            if cached is not None:
+                cached["description"] = new_description
+                run_storage.save_run(cached, activity_id)
+
             return {
                 "success": True,
                 "activity_id": activity_id,
