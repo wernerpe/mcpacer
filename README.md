@@ -132,6 +132,7 @@ The coach interacts with your data through these MCP tools:
 | `get_plan_context` | Active plan as compact text with current week highlighted |
 | `get_coaching_personas` | List available persona names |
 | `get_coaching_persona` | Load a persona's full coaching guidelines |
+| `get_onboarding_questions` | Load the onboarding questionnaire for a new athlete (PRs, goals, constraints) |
 
 **Coach Memory**
 

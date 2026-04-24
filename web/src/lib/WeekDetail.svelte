@@ -103,11 +103,21 @@
 									{/if}
 								</button>
 							{/each}
+							{#if prescribed}
+								<div class="text-slate-500 mt-0.5 text-[11px] leading-snug px-1">
+									<span class="text-slate-600">Planned:</span>
+									{#if prescribed.distance_km}{prescribed.distance_km}km{/if}
+									{prescribed.structure || prescribed.description}
+								</div>
+							{/if}
 						{:else if prescribed}
 							<span class={typeColor(prescribed.type)}>
 								{#if prescribed.distance_km}{prescribed.distance_km}km{/if}
 								{prescribed.description}
 							</span>
+							{#if prescribed.structure}
+								<div class="text-slate-400 mt-0.5 text-[11px] leading-snug">{prescribed.structure}</div>
+							{/if}
 						{/if}
 					</div>
 

@@ -23,6 +23,12 @@ class CoachingStorage(BaseStorage):
     def get_guidelines(self) -> str | None:
         return self._load_text(self.get_guidelines_path())
 
+    def get_onboarding_path(self) -> Path:
+        return self.data_dir / "onboarding.md"
+
+    def get_onboarding(self) -> str | None:
+        return self._load_text(self.get_onboarding_path())
+
     def get_persona_path(self, coach_name: str | None = None) -> Path:
         if coach_name is None:
             coach_name = self.DEFAULT_COACH

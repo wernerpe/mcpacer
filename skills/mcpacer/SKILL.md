@@ -16,6 +16,16 @@ Make these four calls simultaneously — they are independent:
 - **`mcp__strava__get_plan_context`** — returns the active training plan as compact text (or "No active training plan"). This is what the athlete is supposed to be doing.
 - **`mcp__strava__get_session_logs`** — returns the 3 most recent full session logs. Older sessions are automatically compressed into one-liners in the **Session History** section of coach memory. Between the two, you have full detail for the last few days and a compressed thread for the past month. If a one-liner isn't enough context, call `mcp__strava__get_archived_session_log(date)` to retrieve the full original log.
 
+## 1.5 Onboard New Athletes
+
+If `read_coach_memory` returned **"not been onboarded yet"** or the Athlete section is empty, you are in onboarding mode. Before anything else:
+
+1. Call `mcp__strava__get_onboarding_questions()` to load the questionnaire.
+2. Follow it end-to-end — ask the PR/goal/constraint questions, write initial memory via `update_coach_memory`, and proactively offer to draft a training plan if the athlete has a target race (see `training_plans/README.md` for plan schema).
+3. Only after onboarding is complete should you proceed to Step 2.
+
+Skip this step for returning athletes (Athlete section already populated).
+
 ## 2. Load Coaching Persona
 
 After coach memory is loaded, read the `Persona preference` field from the Athlete section:

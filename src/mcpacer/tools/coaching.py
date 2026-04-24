@@ -46,3 +46,24 @@ def register_coaching_tools(mcp):
             return {"data": {"persona": coach_name, "content": content}}
         except Exception as e:
             return {"error": str(e)}
+
+    @mcp.tool()
+    def get_onboarding_questions() -> dict[str, Any]:
+        """
+        Load the onboarding questionnaire for a new athlete.
+
+        Call this when read_coach_memory returns "not been onboarded yet" or
+        the Athlete section of coach memory is empty. Returns the full series
+        of questions to ask (PRs, goals, constraints, etc.) plus instructions
+        for saving initial memory and drafting a training plan.
+
+        Returns:
+            Dictionary with the onboarding questionnaire as markdown.
+        """
+        try:
+            content = coaching_storage.get_onboarding()
+            if content is None:
+                return {"error": "onboarding.md not found in coaching_data/"}
+            return {"data": {"content": content}}
+        except Exception as e:
+            return {"error": str(e)}
