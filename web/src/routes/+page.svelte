@@ -7,7 +7,11 @@
 	import PlanOverview from '$lib/PlanOverview.svelte';
 	import WeekDetail from '$lib/WeekDetail.svelte';
 	import RunDetail from '$lib/RunDetail.svelte';
+	import BodyTab from '$lib/BodyTab.svelte';
 	import Onboarding from '$lib/Onboarding.svelte';
+
+	type RightTab = 'run' | 'body';
+	let rightTab: RightTab = $state('run');
 
 	let terminalEl: HTMLDivElement;
 	let fitAddon: FitAddon;
@@ -99,7 +103,12 @@
 	function initEventSocket() {
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 		const ws = new WebSocket(`${protocol}//${window.location.host}/ws/events`);
-		ws.onmessage = () => loadWeeks();
+		ws.onmessage = (event) => {
+			// Body state messages are handled by BodyTab — don't refetch weeks
+			// on every paint stroke.
+			if (typeof event.data === 'string' && event.data.startsWith('{')) return;
+			loadWeeks();
+		};
 		ws.onclose = () => setTimeout(initEventSocket, 3000);
 	}
 
@@ -265,9 +274,36 @@
 				<div class="h-8 w-[2px] rounded bg-slate-700 group-hover:bg-sky-500/60 transition-colors"></div>
 			</div>
 
-			<!-- Right: run detail -->
-			<div class="flex-1 min-h-0">
-				<RunDetail {runData} loading={runLoading} />
+			<!-- Right: tabbed panel (run detail | body) -->
+			<div class="flex-1 min-h-0 flex flex-col">
+				<!-- Tab strip -->
+				<div class="flex shrink-0 border-b border-slate-800 bg-gray-950">
+					<button
+						class="px-4 py-2 text-xs uppercase tracking-wide font-semibold transition-colors {rightTab === 'run'
+							? 'text-sky-300 border-b-2 border-sky-400 -mb-px'
+							: 'text-slate-500 hover:text-slate-300'}"
+						onclick={() => (rightTab = 'run')}
+					>
+						Run
+					</button>
+					<button
+						class="px-4 py-2 text-xs uppercase tracking-wide font-semibold transition-colors {rightTab === 'body'
+							? 'text-sky-300 border-b-2 border-sky-400 -mb-px'
+							: 'text-slate-500 hover:text-slate-300'}"
+						onclick={() => (rightTab = 'body')}
+					>
+						Body
+					</button>
+				</div>
+
+				<!-- Tab content -->
+				<div class="flex-1 min-h-0">
+					{#if rightTab === 'run'}
+						<RunDetail {runData} loading={runLoading} />
+					{:else}
+						<BodyTab />
+					{/if}
+				</div>
 			</div>
 		</div>
 
