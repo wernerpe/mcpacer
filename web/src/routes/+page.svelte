@@ -292,7 +292,7 @@
 							: 'text-slate-500 hover:text-slate-300'}"
 						onclick={() => (rightTab = 'body')}
 					>
-						Body
+						Body Map
 					</button>
 				</div>
 
