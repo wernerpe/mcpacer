@@ -1,7 +1,7 @@
 [project]
 name = "mcpacer"
 version = "0.1.0"
-description = "AI Running Coach powered by Claude + Strava - MCP server for personalized training plans and coaching"
+description = "AI Running Coach with persistent memory powered by Claude + Strava - MCP server for personalized training plans and coaching"
 readme = "README.md"
 authors = [
     { name = "Peter Werner" }
