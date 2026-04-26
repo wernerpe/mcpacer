@@ -15,14 +15,21 @@ An AI-powered running coach that connects Claude to your Strava data through the
 
 ## Features
 
+<p align="center">
+  <img src="misc/figures/coaches.jpeg" alt="Coaches" height="280" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="misc/figures/bodymap.png" alt="Body Map" height="280" />
+</p>
+
+- **Customizable Personas** — Choose from multiple coaching styles (tough love, balanced, analytical, etc.)
 - **Web Dashboard** — Plan overview, weekly breakdown, run detail with GPS maps and workout analysis charts
 - **Integrated Coaching Terminal** — Chat with your AI coach directly in the dashboard
-- **Customizable Personas** — Choose from multiple coaching styles (tough love, balanced, analytical, etc.)
 - **Training Plans** — Create, track, and adjust structured plans in YAML format
 - **Strava Sync** — Automatically pull activities, laps, HR, pace, and GPS data
 - **Plan Adherence** — Visual comparison of planned vs actual weekly mileage
-- **Persistent Memory** — Coach remembers your goals, injuries, patterns, and session history across conversations
+- **Persistent Memory** — Coach remembers your goals, injuries, patterns, and session history across conversations. This enables periodization.
 - **Run Digestion** — Each run gets a compact single-line summary for efficient context loading
+- **Body Map (PT mode)** — Discuss imbalances, pain, and tightness directly with your coach to devise a strength and conditioning plan.
 
 ## Getting Started
 
