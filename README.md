@@ -1,4 +1,4 @@
-# MCPacer
+![MCPacer](misc/figures/title_image.png)
 
 [![Tests](https://github.com/wernerpe/mcpacer/actions/workflows/tests.yml/badge.svg)](https://github.com/wernerpe/mcpacer/actions/workflows/tests.yml)
 
@@ -11,12 +11,14 @@ An AI-powered running coach that connects Claude to your Strava data through the
 >
 > P.S. I can highly recommend coach David or coach Kim
 
-![Dashboard](misc/figures/title_figure.png)
-
 ## Features
 
 <p align="center">
-  <img src="misc/figures/coaches.jpeg" alt="Coaches" height="280" />
+  <img src="misc/figures/coaches.jpeg" alt="Coaches" width="70%" />
+</p>
+
+<p align="center">
+  <img src="misc/figures/dashboard_overview.png" alt="Dashboard Overview" height="280" />
   &nbsp;&nbsp;&nbsp;&nbsp;
   <img src="misc/figures/bodymap.png" alt="Body Map" height="280" />
 </p>
