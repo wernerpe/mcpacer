@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from mcpacer.context import (
     _group_runs_by_week,
@@ -13,6 +14,8 @@ from mcpacer.context import (
 )
 from mcpacer.storage.runs import RunStorage
 from mcpacer.storage.training_plans import TrainingPlanStorage
+from mcpacer.web import body_state
+from mcpacer.web.events import broadcast_json
 
 router = APIRouter(prefix="/api")
 
@@ -257,3 +260,40 @@ async def get_run_detail(activity_id: int) -> dict[str, Any]:
     base["start_latlng"] = run.get("start_latlng")
     base["summary_polyline"] = run.get("summary_polyline")
     return base
+
+
+# ====================================================================
+# Body state — shared between the web UI and the MCP body tools.
+# UI POSTs painted regions; MCP server POSTs highlighted regions.
+# All mutations broadcast on /ws/events as {"type": "body_state", ...}.
+# ====================================================================
+
+
+class BodyPaintRequest(BaseModel):
+    regions: list[str]
+
+
+class BodyHighlightRequest(BaseModel):
+    regions: list[str]
+    reason: str = ""
+
+
+@router.get("/body/state")
+async def get_body_state():
+    return body_state.get_state()
+
+
+@router.post("/body/painted")
+async def post_body_painted(req: BodyPaintRequest):
+    body_state.set_painted(req.regions)
+    state = body_state.get_state()
+    await broadcast_json({"type": "body_state", "state": state})
+    return state
+
+
+@router.post("/body/highlighted")
+async def post_body_highlighted(req: BodyHighlightRequest):
+    body_state.set_highlighted(req.regions, req.reason)
+    state = body_state.get_state()
+    await broadcast_json({"type": "body_state", "state": state})
+    return state
