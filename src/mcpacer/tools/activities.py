@@ -182,9 +182,17 @@ def register_activity_tools(mcp, strava_client):
         Appends feedback from the coach to the activity's description,
         preserving any existing description text.
 
+        IMPORTANT — pass ONLY the raw feedback body. Do NOT include:
+          - a leading "(CoachName 🤖)" prefix or any 🤖 emoji
+          - a trailing "Coached by MCPacer …" signature
+          - separator lines like "-------"
+        The tool wraps your text with all of these automatically. If you
+        copy the format you see in existing descriptions, you will produce
+        duplicate emojis and a duplicate signature.
+
         Args:
             activity_id: ID of the activity to add feedback to
-            feedback: The coaching feedback text to append
+            feedback: The raw coaching feedback body (no prefix, no signature)
             coach_name: Name of the coach to display (default: "Coach")
 
         Returns:
