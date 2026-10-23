@@ -125,7 +125,7 @@ weeks:
 
 ### Coaching Personas
 
-Personas live in `coaching_data/personas/` as markdown files. Each defines a coaching style, tone, and behavioral rules. Available: `coach` (balanced), `david` (tough love), `roland`, `kim`, `hartmann`. Create your own by adding a `.md` file.
+Personas live in `coaching_data/personas/` as markdown files. Each defines a coaching style, tone, and behavioral rules. Available: `coach` (balanced), `david` (tough love), `roland`, `kim`, `hartmann`, `davihh` (meme-brained David parody). Create your own by adding a `.md` file.
 
 ## Architecture
 
